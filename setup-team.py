@@ -38,6 +38,8 @@ def install_dotclaude(target: Path, force: bool) -> None:
     shipped; each agent creates its own `logs/<agent>.md` on first write."""
     for src in sorted(p for p in DOTCLAUDE.rglob("*") if p.is_file()):
         rel = src.relative_to(DOTCLAUDE)
+        if "__pycache__" in rel.parts or src.suffix == ".pyc":
+            continue
         copy_file(src, target / ".claude" / rel, force, f".claude/{rel.as_posix()}")
 
 
@@ -77,9 +79,11 @@ def main() -> None:
     print(f"Installing dev team into: {target}\n")
     print(".claude:")
     install_dotclaude(target, args.force)
+    copy_file(README, target / ".claude" / "README.md", args.force, ".claude/README.md")
+    # .mcp.json is the ONE file that must live at the project root — Claude Code
+    # only discovers project MCP servers from <project>/.mcp.json, not from .claude/.
     print("root files:")
     install_mcp(target, args.force)
-    copy_file(README, target / "README.md", args.force, "README.md")
 
     print("\nDone. cd into the project and describe the work — Claude Code")
     print("auto-discovers .claude/agents/*.md and routes to the right agent.")

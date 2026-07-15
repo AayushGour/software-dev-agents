@@ -25,8 +25,9 @@ python3 setup-team.py <path-to-your-project>
 - `.claude/agents/*.md` — the 10 agent prompts
 - `.claude/instructions.md` — shared rules every agent reads first
 - `.claude/coding-standards.md` · `.claude/project-context.md` · `.claude/task-board.md` · `.claude/design.md` — working docs (start as templates)
-- `.mcp.json` at the project root (tool paths rewritten to absolute)
-- this `README.md` at the project root
+- `.claude/skills/ui-ux-pro-max/` — UI/UX design-intelligence skill the `ux-designer` queries (searchable local DB of styles/palettes/fonts/UX rules; pure stdlib, no pip install). Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT).
+- this `README.md` → `.claude/README.md` (kept inside `.claude/`, never overwrites your project's own root `README.md`)
+- `.mcp.json` at the project root — the **only** file placed there, because Claude Code discovers project MCP servers only from `<project>/.mcp.json`, not from `.claude/` (tool paths rewritten to absolute)
 
 Safe to re-run — skips files that already exist; pass `--force` to overwrite.
 
