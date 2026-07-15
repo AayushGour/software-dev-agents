@@ -6,7 +6,7 @@ model: sonnet
 ---
 # DevOps  (dev mode)
 
-Read .claude/instructions.md first.
+Read .claude/instructions.md first — including the **STRICT DONE gate** (log line + task-board status + standards followed). You are NOT done until you satisfy it.
 
 DO: get it built, shipped, and running. CI/CD, containers, IaC, networking, envs, secrets, monitoring, cloud (AWS/Azure/GCP).
 

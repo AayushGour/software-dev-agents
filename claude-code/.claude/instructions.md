@@ -48,7 +48,7 @@ Priority = business urgency (PM owns). Severity = technical impact/complexity (s
 **User-facing docs** are split three ways by who knows it best: **architect** → overview + getting-started/setup; **senior-dev** → API/usage reference for what they built; **tester** → verified how-to/user guide (only steps they ran and saw pass). One voice, no overlap — keep the three coherent.
 
 ## Logging — one file per agent (no shared file, no lock)
-Each agent writes **only** its own `.claude/logs/<agent>.md` — e.g. senior-dev → `.claude/logs/senior-dev.md`. Because no two agents ever write the same file, parallel agents never collide; no read-modify-write, no lost lines.
+Each agent writes **only** its own `.claude/logs/<agent>.md` — e.g. senior-dev → `.claude/logs/senior-dev.md`. The `logs/` dir isn't shipped; create your file on first write (a Write makes parent dirs). Because no two agents ever write the same file, parallel agents never collide; no read-modify-write, no lost lines.
 - 1 line per task at handoff/done (not per action).
 - Format: `- <date> [T<id>] one-line summary` (e.g. `- 2026-07-15 [T7] built /auth API, tests green, → reviewer`).
 - To see who-did-what across the team, read/concat `.claude/logs/*.md` (PM does this for status reports).
@@ -63,9 +63,17 @@ Use the `Task` tool. Give the target: task id, files, the one thing to do. Spawn
 - senior-dev → junior-dev for sub-tasks, then reviews; escalates complex asks up to architect.
 - senior-dev → reviewer → tester on completion.
 
+## DONE gate — STRICT, every agent, every task (not optional, not skippable)
+You have NOT finished a task until all of these are true. Do them yourself before you report done or hand off — do not assume the main thread or another agent will. If you skip the loop for a trivial change, say so explicitly; silence is not allowed.
+1. **Logged** — appended your one line to your own `.claude/logs/<agent>.md` (create the file — and the `logs/` dir — if absent; a Write makes parent dirs). Never another agent's file.
+2. **Task-board updated** — set your task's `status:` on `.claude/task-board.md` (todo→wip→review/test→done, or blocked). If no line exists for the work, add one.
+3. **Standards honored** — for any code you wrote/changed, followed `.claude/coding-standards.md` Non-negotiables (DRY, constants module, one config module, lint clean). architect: you also *write/refresh* coding-standards.md, not just follow it.
+4. **Context recorded** — wrote any real decision/assumption into `.claude/project-context.md`.
+Report done in the form: "done — logged, board:<status>, standards:ok". If one is genuinely N/A, name it and why.
+
 ## Common rules (every agent)
 - **Clarify if unsure.** Don't invent requirements — ask, or note the assumption in .claude/project-context.md.
-- **Log 1 line** to your own `.claude/logs/<agent>.md` at handoff/done. Never write another agent's log file.
+- **The DONE gate above is mandatory.** Logging and task-board updates are not busywork — they are the team's only shared memory. Unlogged work is invisible and gets redone.
 - **Devs write unit tests.** No feature ships without them.
 - **Research + fact-check** with `mcp__web-search__web_search` (SearXNG) and `mcp__deepwiki__*` (public-repo docs) before building on an unfamiliar library or claim.
 - Follow `.claude/coding-standards.md` — its **Non-negotiables** (DRY, no magic strings, config in one place, consistency, lint clean) apply to every project by default. Update `.claude/project-context.md` when a real decision is made.

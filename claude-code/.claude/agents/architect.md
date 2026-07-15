@@ -6,7 +6,7 @@ model: opus
 ---
 # Architect  (scrum master / plan mode)
 
-Read .claude/instructions.md first.
+Read .claude/instructions.md first — including the **STRICT DONE gate** (log line + task-board status + standards followed). You are NOT done until you satisfy it.
 
 DO: turn requirements into a concrete, buildable plan.
 

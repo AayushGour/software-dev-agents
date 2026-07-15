@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""Install the claude-code dev team (agents + instructions + mcp tools + templates)
-into any target project folder. Cross-platform: Windows, Linux, macOS.
+"""Install the claude-code dev team into any target project folder.
+
+`claude-code/.claude/` already mirrors the exact layout an installed project
+uses, so install is a straight copy of that tree, plus `.mcp.json` and the
+README at the project root. Cross-platform: Windows, Linux, macOS.
 
 Usage:
     python setup-team.py <target-dir> [--force]
@@ -15,75 +18,48 @@ from pathlib import Path
 
 HARNESS_ROOT = Path(__file__).resolve().parent
 SOURCE = HARNESS_ROOT / "claude-code"
+DOTCLAUDE = SOURCE / ".claude"
 TOOLS_DIR = HARNESS_ROOT / "tools"
+README = HARNESS_ROOT / "README.md"
 
 
-def copy_file(src: Path, dst: Path, force: bool) -> str:
+def copy_file(src: Path, dst: Path, force: bool, label: str) -> None:
     if dst.exists() and not force:
-        return "skip (exists)"
+        print(f"  {label:<32} skip (exists)")
+        return
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
-    return "ok"
+    print(f"  {label:<32} ok")
 
 
-def install_agents(target: Path, force: bool) -> None:
-    src_dir = SOURCE / ".claude" / "agents"
-    dst_dir = target / ".claude" / "agents"
-    for f in sorted(src_dir.glob("*.md")):
-        status = copy_file(f, dst_dir / f.name, force)
-        print(f"  agents/{f.name:<22} {status}")
-
-
-def install_instructions(target: Path, force: bool) -> None:
-    status = copy_file(SOURCE / "instructions.md", target / ".claude" / "instructions.md", force)
-    print(f"  .claude/instructions.md{'':<7} {status}")
-
-
-def install_logs(target: Path, force: bool) -> None:
-    """One log file per agent (.claude/logs/<agent>.md). Each agent writes only
-    its own file, so parallel agents never collide — no shared file, no lock."""
-    logs_dir = target / ".claude" / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    agent_names = sorted(f.stem for f in (SOURCE / ".claude" / "agents").glob("*.md"))
-    for name in agent_names:
-        dst = logs_dir / f"{name}.md"
-        if dst.exists() and not force:
-            print(f"  .claude/logs/{name}.md{'':<{max(0, 12 - len(name))}} skip (exists)")
-            continue
-        dst.write_text(
-            f"# {name} log\n"
-            "This agent's own log — only {name} writes here. 1 line per task at handoff/done.\n"
-            "Format: `- <date> [T<id>] one-line summary`\n\n".replace("{name}", name)
-        )
-        print(f"  .claude/logs/{name}.md{'':<{max(0, 12 - len(name))}} ok")
-
-
-def install_templates(target: Path, force: bool) -> None:
-    for f in sorted((SOURCE / "templates").glob("*.md")):
-        status = copy_file(f, target / ".claude" / f.name, force)
-        print(f"  .claude/{f.name:<14} {status}")
+def install_dotclaude(target: Path, force: bool) -> None:
+    """Copy the whole .claude tree (agents, instructions, working-doc templates)
+    verbatim — source already has the right shape. Note: `.claude/logs/` is NOT
+    shipped; each agent creates its own `logs/<agent>.md` on first write."""
+    for src in sorted(p for p in DOTCLAUDE.rglob("*") if p.is_file()):
+        rel = src.relative_to(DOTCLAUDE)
+        copy_file(src, target / ".claude" / rel, force, f".claude/{rel.as_posix()}")
 
 
 def install_mcp(target: Path, force: bool) -> None:
     dst = target / ".mcp.json"
     if dst.exists() and not force:
-        print(f"  .mcp.json{'':<21} skip (exists)")
+        print(f"  {'.mcp.json':<32} skip (exists)")
         return
-    with open(SOURCE / ".mcp.json") as fh:
+    with open(DOTCLAUDE.parent / ".mcp.json") as fh:
         config = json.load(fh)
 
-    # Rewrite the relative "../tools/..." path to an absolute path so it
-    # works regardless of where <target> lives on disk / which OS.
+    # Rewrite the relative "../tools/..." path to absolute so it resolves from
+    # wherever <target> lives on disk / whichever OS.
     web_search = config.get("mcpServers", {}).get("web-search")
     if web_search:
-        script = TOOLS_DIR / "web_search" / "mcp_server.py"
-        web_search["args"] = [str(script)]
+        web_search["args"] = [str(TOOLS_DIR / "web_search" / "mcp_server.py")]
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(dst, "w") as fh:
         json.dump(config, fh, indent=2)
         fh.write("\n")
-    print(f"  .mcp.json{'':<21} ok (paths made absolute)")
+    print(f"  {'.mcp.json':<32} ok (paths made absolute)")
 
 
 def main() -> None:
@@ -92,22 +68,18 @@ def main() -> None:
     parser.add_argument("--force", action="store_true", help="overwrite existing files")
     args = parser.parse_args()
 
-    if not SOURCE.exists():
-        sys.exit(f"error: {SOURCE} not found — run this script from inside the harness repo")
+    if not DOTCLAUDE.exists():
+        sys.exit(f"error: {DOTCLAUDE} not found — run this script from inside the harness repo")
 
     target = Path(args.target).expanduser().resolve()
     target.mkdir(parents=True, exist_ok=True)
 
     print(f"Installing dev team into: {target}\n")
-    print("agents:")
-    install_agents(target, args.force)
-    print(".claude files:")
-    install_instructions(target, args.force)
-    install_templates(target, args.force)
+    print(".claude:")
+    install_dotclaude(target, args.force)
     print("root files:")
     install_mcp(target, args.force)
-    print("logs:")
-    install_logs(target, args.force)
+    copy_file(README, target / "README.md", args.force, "README.md")
 
     print("\nDone. cd into the project and describe the work — Claude Code")
     print("auto-discovers .claude/agents/*.md and routes to the right agent.")
