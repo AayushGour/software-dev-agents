@@ -30,6 +30,29 @@ python3 setup-team.py <path-to-your-project>
 
 Safe to re-run — skips files that already exist; pass `--force` to overwrite.
 
+### Optional: a `setup-team` command (run it from anywhere)
+So you can type `setup-team <path-to-project>` in any folder instead of `cd`-ing to the harness first. The script resolves the target relative to your current directory, so the alias works from anywhere. Replace `/ABSOLUTE/PATH/TO/harness` with this repo's path (`pwd` here on macOS/Linux, `(Get-Location).Path` in PowerShell).
+
+**macOS / Linux — zsh** (default on modern macOS), append to `~/.zshrc`:
+```bash
+echo 'alias setup-team="python3 /ABSOLUTE/PATH/TO/harness/setup-team.py"' >> ~/.zshrc
+source ~/.zshrc
+```
+**Linux — bash**, same but `~/.bashrc`:
+```bash
+echo 'alias setup-team="python3 /ABSOLUTE/PATH/TO/harness/setup-team.py"' >> ~/.bashrc
+source ~/.bashrc
+```
+**Windows — PowerShell**, add a function to your profile (aliases can't carry a fixed argument, so use a function that forwards `@args`):
+```powershell
+Add-Content $PROFILE 'function setup-team { python "C:\ABSOLUTE\PATH\TO\harness\setup-team.py" @args }'
+. $PROFILE
+```
+Then from any project folder:
+```bash
+setup-team <path-to-your-project>
+```
+
 **Then start a new Claude Code session inside that project folder** — subagents are discovered at session start, not hot-reloaded mid-conversation. Describe the work; the main thread routes to the right agent, or call one via the `Task` tool.
 
 ## Roster (10)
