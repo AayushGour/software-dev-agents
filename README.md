@@ -29,7 +29,9 @@ python3 setup-team.py <path-to-your-project>
 - this `README.md` → `.claude/README.md` (kept inside `.claude/`, never overwrites your project's own root `README.md`)
 - `.mcp.json` at the project root — the **only** file placed there, because Claude Code discovers project MCP servers only from `<project>/.mcp.json`, not from `.claude/` (tool paths rewritten to absolute)
 
-Safe to re-run — skips files that already exist; pass `--force` to overwrite.
+Safe to re-run:
+- **Default** — skips every file that already exists (no data touched).
+- **`--force`** — updates the *framework* files (agents, instructions, skills, `.claude/README.md`, `.mcp.json`) to the latest version, but **never** overwrites your per-project working docs (`project-context.md`, `coding-standards.md`, `task-board.md`, `design.md`) — those are seeded once and stay yours. Use `--force` to upgrade the team without losing project state.
 
 ### Optional: a `setup-team` command (run it from anywhere)
 So you can type `setup-team <path-to-project>` in any folder instead of `cd`-ing to the harness first. The script resolves the target relative to your current directory, so the alias works from anywhere. Replace `/ABSOLUTE/PATH/TO/harness` with this repo's path (`pwd` here on macOS/Linux, `(Get-Location).Path` in PowerShell).

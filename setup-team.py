@@ -22,10 +22,22 @@ DOTCLAUDE = SOURCE / ".claude"
 TOOLS_DIR = HARNESS_ROOT / "tools"
 README = HARNESS_ROOT / "README.md"
 
+# Per-project working docs: seeded once as blank templates, then filled in by the
+# agents. NEVER overwritten — not even with --force — or you'd wipe real project
+# data (requirements, tasks, standards, design). Everything else (agents,
+# instructions, skills, README, .mcp.json) is framework and --force replaces it.
+SEED_ONCE = {
+    "project-context.md",
+    "coding-standards.md",
+    "task-board.md",
+    "design.md",
+}
 
-def copy_file(src: Path, dst: Path, force: bool, label: str) -> None:
-    if dst.exists() and not force:
-        print(f"  {label:<32} skip (exists)")
+
+def copy_file(src: Path, dst: Path, force: bool, label: str, protected: bool = False) -> None:
+    if dst.exists() and (protected or not force):
+        reason = "keep (your data)" if protected else "skip (exists)"
+        print(f"  {label:<32} {reason}")
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
@@ -33,14 +45,16 @@ def copy_file(src: Path, dst: Path, force: bool, label: str) -> None:
 
 
 def install_dotclaude(target: Path, force: bool) -> None:
-    """Copy the whole .claude tree (agents, instructions, working-doc templates)
-    verbatim — source already has the right shape. Note: `.claude/logs/` is NOT
-    shipped; each agent creates its own `logs/<agent>.md` on first write."""
+    """Copy the whole .claude tree (agents, instructions, skills, working-doc
+    templates) — source already has the right shape. Working docs in SEED_ONCE are
+    written only if absent (never clobbered). Note: `.claude/logs/` is NOT shipped;
+    each agent creates its own `logs/<agent>.md` on first write."""
     for src in sorted(p for p in DOTCLAUDE.rglob("*") if p.is_file()):
         rel = src.relative_to(DOTCLAUDE)
         if "__pycache__" in rel.parts or src.suffix == ".pyc":
             continue
-        copy_file(src, target / ".claude" / rel, force, f".claude/{rel.as_posix()}")
+        protected = rel.as_posix() in SEED_ONCE
+        copy_file(src, target / ".claude" / rel, force, f".claude/{rel.as_posix()}", protected)
 
 
 def install_mcp(target: Path, force: bool) -> None:
