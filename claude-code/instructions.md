@@ -11,7 +11,7 @@ Client → business-analyst (requirements + clarify)
            ux-designer      (any UI — flows, design system, accessibility)
            product-engineer (feasibility, prioritization, spikes to de-risk)
 ```
-Output: `project-context.md` (what/why + design) + `coding-standards.md` + a task list in `task-board.md`.
+Output: `.claude/project-context.md` (what/why + design) + `.claude/coding-standards.md` + a task list in `.claude/task-board.md`.
 
 **AGILE DEV MODE** — build it.
 ```
@@ -35,11 +35,11 @@ Priority = business urgency (PM owns). Severity = technical impact/complexity (s
 
 ## Shared files (the source of truth — not chat)
 ```
-project-context.md    what we're building, why, constraints, design, decisions   (BA seeds; architect + PM keep current)
-coding-standards.md   stack, conventions, how to run tests                        (architect)
-task-board.md         tasks + owner + priority + status                           (architect creates; PM keeps honest; each updates own)
-design.md             flows, states, components, accessibility AC                 (ux-designer; optional — only UI projects)
-logs/<agent>.md       one log file per agent, that agent appends only             (each agent, own file only)
+.claude/project-context.md    what we're building, why, constraints, design, decisions   (BA seeds; architect + PM keep current)
+.claude/coding-standards.md   stack, conventions, how to run tests                        (architect)
+.claude/task-board.md         tasks + owner + priority + status                           (architect creates; PM keeps honest; each updates own)
+.claude/design.md             flows, states, components, accessibility AC                 (ux-designer; optional — only UI projects)
+.claude/logs/<agent>.md       one log file per agent, that agent appends only             (each agent, own file only)
 ```
 "Analyze the code" = Grep / Glob / Read. Reuse before you write — no duplicates.
 
@@ -48,12 +48,12 @@ logs/<agent>.md       one log file per agent, that agent appends only           
 **User-facing docs** are split three ways by who knows it best: **architect** → overview + getting-started/setup; **senior-dev** → API/usage reference for what they built; **tester** → verified how-to/user guide (only steps they ran and saw pass). One voice, no overlap — keep the three coherent.
 
 ## Logging — one file per agent (no shared file, no lock)
-Each agent writes **only** its own `logs/<agent>.md` — e.g. senior-dev → `logs/senior-dev.md`. Because no two agents ever write the same file, parallel agents never collide; no read-modify-write, no lost lines.
+Each agent writes **only** its own `.claude/logs/<agent>.md` — e.g. senior-dev → `.claude/logs/senior-dev.md`. Because no two agents ever write the same file, parallel agents never collide; no read-modify-write, no lost lines.
 - 1 line per task at handoff/done (not per action).
 - Format: `- <date> [T<id>] one-line summary` (e.g. `- 2026-07-15 [T7] built /auth API, tests green, → reviewer`).
-- To see who-did-what across the team, read/concat `logs/*.md` (PM does this for status reports).
+- To see who-did-what across the team, read/concat `.claude/logs/*.md` (PM does this for status reports).
 
-## Task line (task-board.md)
+## Task line (.claude/task-board.md)
 `- [ ] T7 [senior-dev] Build /auth API  prio:P1  status:todo  deps:T3`
 status: todo | wip | review | test | done | blocked
 
@@ -64,11 +64,11 @@ Use the `Task` tool. Give the target: task id, files, the one thing to do. Spawn
 - senior-dev → reviewer → tester on completion.
 
 ## Common rules (every agent)
-- **Clarify if unsure.** Don't invent requirements — ask, or note the assumption in project-context.md.
-- **Log 1 line** to your own `logs/<agent>.md` at handoff/done. Never write another agent's log file.
+- **Clarify if unsure.** Don't invent requirements — ask, or note the assumption in .claude/project-context.md.
+- **Log 1 line** to your own `.claude/logs/<agent>.md` at handoff/done. Never write another agent's log file.
 - **Devs write unit tests.** No feature ships without them.
 - **Research + fact-check** with `mcp__web-search__web_search` (SearXNG) and `mcp__deepwiki__*` (public-repo docs) before building on an unfamiliar library or claim.
-- Follow `coding-standards.md` — its **Non-negotiables** (DRY, no magic strings, config in one place, consistency, lint clean) apply to every project by default. Update `project-context.md` when a real decision is made.
+- Follow `.claude/coding-standards.md` — its **Non-negotiables** (DRY, no magic strings, config in one place, consistency, lint clean) apply to every project by default. Update `.claude/project-context.md` when a real decision is made.
 - Match ceremony to task size. A typo doesn't need the full loop.
 
 ## Roles (one file each in .claude/agents/)

@@ -35,33 +35,33 @@ def install_agents(target: Path, force: bool) -> None:
 
 
 def install_instructions(target: Path, force: bool) -> None:
-    status = copy_file(SOURCE / "instructions.md", target / "instructions.md", force)
-    print(f"  instructions.md{'':<15} {status}")
+    status = copy_file(SOURCE / "instructions.md", target / ".claude" / "instructions.md", force)
+    print(f"  .claude/instructions.md{'':<7} {status}")
 
 
 def install_logs(target: Path, force: bool) -> None:
-    """One log file per agent (logs/<agent>.md). Each agent writes only its own
-    file, so parallel agents never collide — no shared file, no lock needed."""
-    logs_dir = target / "logs"
+    """One log file per agent (.claude/logs/<agent>.md). Each agent writes only
+    its own file, so parallel agents never collide — no shared file, no lock."""
+    logs_dir = target / ".claude" / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     agent_names = sorted(f.stem for f in (SOURCE / ".claude" / "agents").glob("*.md"))
     for name in agent_names:
         dst = logs_dir / f"{name}.md"
         if dst.exists() and not force:
-            print(f"  logs/{name}.md{'':<{max(0, 12 - len(name))}} skip (exists)")
+            print(f"  .claude/logs/{name}.md{'':<{max(0, 12 - len(name))}} skip (exists)")
             continue
         dst.write_text(
             f"# {name} log\n"
             "This agent's own log — only {name} writes here. 1 line per task at handoff/done.\n"
             "Format: `- <date> [T<id>] one-line summary`\n\n".replace("{name}", name)
         )
-        print(f"  logs/{name}.md{'':<{max(0, 12 - len(name))}} ok")
+        print(f"  .claude/logs/{name}.md{'':<{max(0, 12 - len(name))}} ok")
 
 
 def install_templates(target: Path, force: bool) -> None:
     for f in sorted((SOURCE / "templates").glob("*.md")):
-        status = copy_file(f, target / f.name, force)
-        print(f"  {f.name:<22} {status}")
+        status = copy_file(f, target / ".claude" / f.name, force)
+        print(f"  .claude/{f.name:<14} {status}")
 
 
 def install_mcp(target: Path, force: bool) -> None:
@@ -101,11 +101,11 @@ def main() -> None:
     print(f"Installing dev team into: {target}\n")
     print("agents:")
     install_agents(target, args.force)
-    print("root files:")
+    print(".claude files:")
     install_instructions(target, args.force)
-    install_mcp(target, args.force)
-    print("templates:")
     install_templates(target, args.force)
+    print("root files:")
+    install_mcp(target, args.force)
     print("logs:")
     install_logs(target, args.force)
 

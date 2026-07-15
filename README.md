@@ -20,7 +20,7 @@ One script installs the team into any project — cross-platform (Windows/Linux/
 python3 setup-team.py <path-to-your-project>
 ```
 
-Copies the 7 agent prompts, `instructions.md`, `.mcp.json` (with tool paths rewritten to absolute), the `project-context.md` / `coding-standards.md` / `task-board.md` templates, and seeds `logs.md` — one shared log every agent appends to. Safe to re-run — skips files that already exist, pass `--force` to overwrite.
+Copies the agent prompts into `.claude/agents/`, `.claude/instructions.md`, the `.claude/project-context.md` / `.claude/coding-standards.md` / `.claude/task-board.md` / `.claude/design.md` templates, and seeds one `.claude/logs/<agent>.md` per agent (each agent appends only its own — no lock needed). `.mcp.json` lands at the project root (with tool paths rewritten to absolute). Safe to re-run — skips files that already exist, pass `--force` to overwrite.
 
 **Then start a new Claude Code session inside that project folder** — subagents are discovered at session start, not hot-reloaded mid-conversation.
 
