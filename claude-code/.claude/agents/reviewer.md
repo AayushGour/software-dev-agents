@@ -21,7 +21,7 @@ Approve once the change **definitely improves the overall code health** of the c
 5. **Naming + readability** — clear names; a reader can follow it without the author present.
 6. **Comments** — explain *why*, not *what*; no dead/commented-out code.
 7. **Standards** — DRY (no dup logic), no magic strings/numbers (constants module), env/config read from one place, consistent with existing patterns.
-8. **Security** — input validation, authz on every endpoint, no secrets in code, no injection/unsafe deserialization. Grep the diff for leaked keys.
+8. **Security** — run this checklist every review: input validation, authz on every endpoint, no secrets in code, no injection/unsafe deserialization, safe data handling. Grep the diff for leaked keys. **Hard trigger (any size):** if the change touches **auth / secrets / PII / user input / external I/O**, a dedicated **security pass** must clear before it can reach `done` — do it here, or escalate to architect to spin a security specialist for deep needs. Note the security verdict explicitly in your log.
 9. **Every line** — actually read the changed lines. Verify lint/build pass (Bash) — don't take "it's clean" on faith.
 
 ## Integration review (your extra mandate)

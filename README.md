@@ -23,7 +23,8 @@ python3 setup-team.py <path-to-your-project>
 `claude-code/.claude/` already mirrors the exact layout an installed project uses, so setup is a straight copy:
 
 - `.claude/agents/*.md` — the 10 agent prompts
-- `.claude/instructions.md` — shared rules every agent reads first
+- `.claude/instructions.md` — shared rules every agent reads first (incl. the DONE gate + team-formation)
+- `.claude/agent-template.md` — skeleton the architect copies into `.claude/agents/` when authoring a project specialist
 - `.claude/coding-standards.md` · `.claude/project-context.md` · `.claude/task-board.md` · `.claude/design.md` — working docs (start as templates)
 - `.claude/skills/ui-ux-pro-max/` — UI/UX design-intelligence skill the `ux-designer` queries (searchable local DB of styles/palettes/fonts/UX rules; pure stdlib, no pip install). Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT).
 - this `README.md` → `.claude/README.md` (kept inside `.claude/`, never overwrites your project's own root `README.md`)
@@ -56,9 +57,9 @@ Then from any project folder:
 setup-team <path-to-your-project>
 ```
 
-**Then start a new Claude Code session inside that project folder** — subagents are discovered at session start, not hot-reloaded mid-conversation. Describe the work; the main thread routes to the right agent, or call one via the `Task` tool.
+**Then start a new Claude Code session inside that project folder** — the freshly-installed `.claude/agents/` is discovered when the session starts. (Once a session is running, new or edited agent files *under the existing* `.claude/agents/` hot-load within seconds — that's what lets the architect add a project specialist mid-project; see [Team formation](#team-formation).) Describe the work; the main thread routes to the right agent, or call one via the `Task` tool.
 
-## Roster (10)
+## Roster (10 core + project specialists)
 | Agent | Role |
 |---|---|
 | business-analyst | requirements, clarify, research/fact-check |
@@ -72,11 +73,16 @@ setup-team <path-to-your-project>
 | reviewer         | independent code + integration review (Google eng-practices), can reject |
 | tester           | unit/integration/API/blackbox, automated scripts, can reject |
 
+The **architect is team lead**. These 10 are the standing team; for a project with a real domain gap the architect can author a **specialist** agent (see [Team formation](#team-formation)).
+
 ## Two modes
-- **Plan mode** — `business-analyst` gathers + clarifies requirements → `architect` designs, sets standards, splits into tasks, pulling in `ux-designer` (UI) and `product-engineer` (feasibility/spikes). No code.
-- **Agile dev mode** — `architect` delegates → `senior-dev` / `junior-dev` / `devops` build → `reviewer` reviews code + integration → `tester` validates → done. `project-manager` tracks + documents throughout.
+- **Plan mode** — `business-analyst` gathers + clarifies requirements → `architect` designs, sets standards, runs the [team self-review](#team-formation), then splits into tasks, pulling in `ux-designer` (UI) and `product-engineer` (feasibility/spikes). No code.
+- **Agile dev mode** — `architect` delegates → `senior-dev` / `junior-dev` / `devops` (+ any specialist) build → `reviewer` reviews code + integration → `tester` validates → done. `project-manager` tracks + documents throughout.
 
 Start in plan mode; switch to dev mode once the plan + tasks exist. Small/obvious change → skip plan mode, just do it.
+
+## Team formation
+Once the plan is clear and before task-split, the **architect** (team lead) reviews the 10 core roles against what the project actually needs, with `project-manager` (coordination) and `product-engineer` (feasibility) consulting. Default is to reuse the 10; only a genuine *ongoing* domain gap (ML, mobile/iOS, data engineering, security, a niche framework — not a one-off task) justifies a new agent. If so, the architect copies `.claude/agent-template.md` → `.claude/agents/<name>.md`, fills it house-style (reads `instructions.md`, satisfies the DONE gate, own log file), and records why in `.claude/project-context.md` (`## Team`). Claude Code hot-loads the new agent within seconds — delegatable the same session — and PM adds it to the roster. Keep the team as small as the work allows.
 
 ## Incoming requests — intake + triage
 Every new bug/change goes to **project-manager** first (the front door).

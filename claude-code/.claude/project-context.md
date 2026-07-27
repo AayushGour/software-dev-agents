@@ -33,6 +33,10 @@ The single source of truth for WHAT + WHY. business-analyst seeds it; architect 
 - Data model: <entities, relationships>
 - APIs: <endpoint → purpose → in/out>
 
+## Team  (architect — from the team-formation self-review)
+- Core roles in play: <which of the 10 this project uses>
+- Specialists added: <name → why the 10 didn't cover it → when added>  (none if standard team suffices)
+
 ## Decisions  (append-only; only if it constrains future work)
 ### D1 — <title>  (<date>, <agent>)
 Why: <reason>. Alt: <rejected> because <...>. Impact: <what it locks>. Files: <paths>

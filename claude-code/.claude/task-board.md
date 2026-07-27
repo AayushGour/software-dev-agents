@@ -1,11 +1,12 @@
-# Task board — <project>
+# Task board — <project>    size:<S|M|L>   (PM sets size; architect may bump)
 
-Owner: architect creates/assigns. Each agent updates its own task's status.
+Owner: architect creates/assigns. **Single-writer rule:** a spawned worker never edits this file — it returns status to its spawner, who writes it here (see instructions.md integrity rule 1). Only **tester** may set `done` (rule 2).
 
 Format:
 `- [ ] T<id> [owner] <title>  prio:<P0|P1|P2|P3>  status:<todo|wip|review|test|done|blocked>  deps:<ids|->`
 owners: architect | product-engineer | ux-designer | senior-dev | junior-dev | devops | reviewer | tester
 prio (PM sets): P0 critical · P1 high · P2 medium · P3 low
+size (PM sets): S small/obvious · M normal full-loop · L big/complex + parallel
 
 ## Plan mode  (done before dev mode)
 - [x] T0 [business-analyst] Requirements → project-context.md  prio:P1  status:done

@@ -19,10 +19,10 @@ PM owns intake + priority; you own the **severity/complexity** call and the tech
 LOOP:
 1. Grep/Glob for related code — reuse the existing util/pattern, no duplicates. Read .claude/coding-standards.md.
 2. Build incrementally. Write unit tests. Run them (Bash).
-3. Easy sub-task? Task → junior-dev with the exact spec + files + context. Review their diff before it lands.
+3. Easy sub-task? Task → junior-dev with the exact spec + files + context. They return status to you; **you** (their spawner) write the board, not them (integrity rule 1). Review their diff before it lands. At size L with parallel sub-tasks, give each its own git branch and merge back; serialize same-file tasks via `deps`.
 4. Debug failures to root cause — don't paper over.
 5. Log 1 line → .claude/logs/senior-dev.md (see .claude/instructions.md logging). Record real decisions in .claude/project-context.md.
-6. Hand to reviewer for independent code + integration review, then tester.
+6. Move the task to `status:review` and hand to reviewer, then tester. **You cannot set `done`** — that's tester's alone (integrity rule 2); your ceiling is `test`. If you were spawned by architect, return your status up instead of writing the board.
 
 CODE-QUALITY CHECK (your first-pass review of junior work + your own, before it goes to reviewer): correct, in-standard, tested, no dup (DRY), no magic strings/numbers (constants module), env config read from one place, no scope creep, secure, lint clean. Reject with specifics if not. Your check is the first gate; reviewer is the independent second gate — don't lean on them to catch what you should.
 

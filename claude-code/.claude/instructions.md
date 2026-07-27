@@ -1,6 +1,6 @@
 # How the org works — read once
 
-A small dev team as agents. 10 roles, 2 modes. Short prompts, direct action, few handoffs.
+A small dev team as agents. 10 core roles (+ project-specific specialists the architect can add), 2 modes. Short prompts, direct action, few handoffs.
 
 ## Two modes
 
@@ -22,9 +22,23 @@ project-manager tracks + documents the whole time
 ```
 Start in plan mode. Switch to dev mode once the plan + tasks exist. Small/obvious change = skip plan mode, just do it.
 
+## Team formation — self-review before building (architect = team lead)
+Once the project picture is clear (requirements in `.claude/project-context.md` + the design) and BEFORE splitting into tasks, the **architect** (team lead for the whole team) runs a roster self-review — with **project-manager** (coordination) and **product-engineer** (feasibility) consulting:
+1. Walk the plan against the 10 core roles: does the standard team cover every skill this project needs?
+2. **Default = reuse the 10.** Only add a specialist for a genuine, *ongoing* skill gap a core role can't cover well — a whole domain (e.g. ML/model work, mobile/iOS, data engineering, security, a niche framework/runtime), never a one-off task (that's just a task for senior/junior-dev).
+3. If a specialist is warranted, the architect authors it: copy `.claude/agent-template.md` → `.claude/agents/<name>.md` and fill it in (see *Authoring a specialist* below). Claude Code hot-loads new agent files within seconds — **no restart** — so it's delegatable this same session. Record the roster decision + why in `.claude/project-context.md` (## Team); PM adds it to the roster and logs it.
+4. Then proceed to task split / dev mode, delegating to core roles + any specialists.
+
+Keep the team as small as the work allows — every extra agent is coordination cost. Once a specialist's work is done, stop delegating to it (leave the file or delete it).
+
+### Authoring a specialist (house style — match the 10)
+- **Frontmatter:** `name` (kebab-case, unique), `description` (WHEN to use it — the main thread routes on this line, so make it sharp), `tools` (the minimal set that role needs, nothing more), `model` (`sonnet` default; `opus` only for heavy design/reasoning).
+- **Body:** first line `Read .claude/instructions.md first — including the STRICT DONE gate…`. Then `DO:` (one responsibility), a short method/`LOOP:`, and `CONSULT` / `NEVER` / `DONE:`. Keep it short — a sharp prompt beats a long one.
+- Same rules as everyone: reads instructions first, satisfies the **DONE gate**, writes only its own `.claude/logs/<name>.md`.
+
 ## Incoming requests — intake + triage
 Every new bug/change request goes to **project-manager** first (the front door).
-1. PM logs it and sets **priority** (P0 critical → P3 low — urgency/when to fix).
+1. PM logs it and sets **priority** (P0 critical → P3 low — urgency/when to fix) and **size** (S/M/L — how much team + process, see below).
 2. PM routes by type (asks senior-dev for the **severity/complexity** read only on borderline cases):
    - new / unclear requirement → **business-analyst**
    - clear small fix → **senior-dev** → does it, or delegates to **junior-dev**
@@ -32,6 +46,13 @@ Every new bug/change request goes to **project-manager** first (the front door).
 3. Then the normal build flow: build → **reviewer** → **tester** → done.
 
 Priority = business urgency (PM owns). Severity = technical impact/complexity (senior-dev owns). Different axes — don't conflate them.
+
+## Project size — one dial for team + ceremony (PM sets, architect adjusts)
+PM tags each project/request **S / M / L** at intake; architect can bump it during team formation. Size is the *default*, not a cage — scale up if reality demands.
+- **S** — small/obvious. 1 dev builds + self-verifies (with evidence). Skip plan mode; reviewer/tester optional (dev still pastes test output). Minimal ceremony.
+- **M** — normal. Plan (architect) → build (senior/junior) → **reviewer → tester**. Default team, full loop, one shared feature branch.
+- **L** — big/complex. Full team + specialists (team formation), **parallel devs on their own branches** (branch-per-task, merged back), full loop. Same-file tasks are serialized via `deps`, never run in parallel.
+The three integrity rules below (single-writer board, tester-owns-done, security trigger) apply at **every** size.
 
 ## Shared files (the source of truth — not chat)
 ```
@@ -56,6 +77,7 @@ Each agent writes **only** its own `.claude/logs/<agent>.md` — e.g. senior-dev
 ## Task line (.claude/task-board.md)
 `- [ ] T7 [senior-dev] Build /auth API  prio:P1  status:todo  deps:T3`
 status: todo | wip | review | test | done | blocked
+Only **tester** may set `done` (see integrity rule 2). A dev's furthest status is `test`.
 
 ## Delegation
 Use the `Task` tool. Give the target: task id, files, the one thing to do. Spawn parallel copies for independent tasks.
@@ -63,10 +85,15 @@ Use the `Task` tool. Give the target: task id, files, the one thing to do. Spawn
 - senior-dev → junior-dev for sub-tasks, then reviews; escalates complex asks up to architect.
 - senior-dev → reviewer → tester on completion.
 
+## Integrity rules — always on, every size (not optional)
+1. **Single-writer board (no task-board race).** A **spawned** worker never edits `.claude/task-board.md`. It builds, writes only its own code + its own `.claude/logs/<agent>.md`, and **returns its result/status to whoever spawned it** (architect / senior-dev / PM). The **spawner** writes the board. So the board has one writer at a time — parallel workers never collide on it. (Logs are already collision-free: one file per agent.) For parallel *code* at size L, each parallel task works on **its own git branch** (branch-per-task), and the spawner merges; tasks touching the same files are serialized with `deps`, not parallelized.
+2. **`done` is earned, not claimed — tester owns it.** Devs (senior/junior) can push a task only as far as `status:test`; they **cannot** write `done`. Flow: dev → `review`, reviewer pass → `test`, **tester** runs the tests/lint and **pastes the actual command output** into its log + board note, then sets `done`. No pasted evidence = not done. (Size S with no separate tester: the single dev still pastes real test output before `done` — no unproven done anywhere.)
+3. **Security has a default path — not just a specialist.** reviewer runs the security checklist on every review (authz per endpoint, input validation, no hardcoded secrets, safe data handling). **Hard trigger, any size:** if a change touches **auth / secrets / PII / user input / external I/O**, a **mandatory security pass** must clear before `done` — reviewer does it, or architect spins a security specialist for deep needs. This floor fires even on an S task.
+
 ## DONE gate — STRICT, every agent, every task (not optional, not skippable)
 You have NOT finished a task until all of these are true. Do them yourself before you report done or hand off — do not assume the main thread or another agent will. If you skip the loop for a trivial change, say so explicitly; silence is not allowed.
 1. **Logged** — appended your one line to your own `.claude/logs/<agent>.md` (create the file — and the `logs/` dir — if absent; a Write makes parent dirs). Never another agent's file.
-2. **Task-board updated** — set your task's `status:` on `.claude/task-board.md` (todo→wip→review/test→done, or blocked). If no line exists for the work, add one.
+2. **Task-board updated** — set your task's `status:` (todo→wip→review/test→done, or blocked). But respect the integrity rules: if you were **spawned**, return your status to your spawner instead of editing the board (rule 1); and a dev's ceiling is `test` — only tester writes `done` (rule 2). If no line exists for the work, the board's writer adds one.
 3. **Standards honored** — for any code you wrote/changed, followed `.claude/coding-standards.md` Non-negotiables (DRY, constants module, one config module, lint clean). architect: you also *write/refresh* coding-standards.md, not just follow it.
 4. **Context recorded** — wrote any real decision/assumption into `.claude/project-context.md`.
 Report done in the form: "done — logged, board:<status>, standards:ok". If one is genuinely N/A, name it and why.
@@ -80,4 +107,5 @@ Report done in the form: "done — logged, board:<status>, standards:ok". If one
 - Match ceremony to task size. A typo doesn't need the full loop.
 
 ## Roles (one file each in .claude/agents/)
-business-analyst · project-manager · architect · product-engineer · ux-designer · senior-dev · junior-dev · devops · reviewer · tester
+**Core (10):** business-analyst · project-manager · architect · product-engineer · ux-designer · senior-dev · junior-dev · devops · reviewer · tester
+**Specialists (0+):** project-specific agents the architect adds during team formation (see above). Template: `.claude/agent-template.md`.
