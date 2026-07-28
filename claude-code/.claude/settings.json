@@ -1,5 +1,15 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ../tools/code_review_graph/ensure_graph.py --build"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [

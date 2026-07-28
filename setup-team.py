@@ -57,6 +57,24 @@ def install_dotclaude(target: Path, force: bool) -> None:
         copy_file(src, target / ".claude" / rel, force, f".claude/{rel.as_posix()}", protected)
 
 
+def rewrite_settings_hooks(target: Path) -> None:
+    """Make hook tool-paths absolute in <target>/.claude/settings.json.
+
+    settings.json is copied verbatim with the .claude tree, but its hook commands use a
+    relative "../tools/..." path that only resolves when running from claude-code/. Rewrite
+    "../tools/" -> the harness's absolute tools dir so the SessionStart (code brain) and
+    SessionEnd (searxng) hooks work from the deployed project root. Idempotent — no-op if
+    the file is absent or already absolute."""
+    dst = target / ".claude" / "settings.json"
+    if not dst.exists():
+        return
+    text = dst.read_text()
+    if "../tools/" not in text:
+        return
+    dst.write_text(text.replace("../tools/", f"{TOOLS_DIR.as_posix()}/"))
+    print(f"  {'.claude/settings.json':<32} ok (hook paths made absolute)")
+
+
 def install_mcp(target: Path, force: bool) -> None:
     dst = target / ".mcp.json"
     if dst.exists() and not force:
@@ -93,6 +111,7 @@ def main() -> None:
     print(f"Installing dev team into: {target}\n")
     print(".claude:")
     install_dotclaude(target, args.force)
+    rewrite_settings_hooks(target)
     copy_file(README, target / ".claude" / "README.md", args.force, ".claude/README.md")
     # .mcp.json is the ONE file that must live at the project root — Claude Code
     # only discovers project MCP servers from <project>/.mcp.json, not from .claude/.
@@ -102,6 +121,7 @@ def main() -> None:
     print("\nDone. cd into the project and describe the work — Claude Code")
     print("auto-discovers .claude/agents/*.md and routes to the right agent.")
     print("(web-search MCP tool needs: pip install mcp)")
+    print("(code brain / code-review-graph needs: uv — https://astral.sh/uv)")
 
 
 if __name__ == "__main__":
