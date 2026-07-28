@@ -1,6 +1,9 @@
 """SearXNG web search — shared core used by CLI, MCP server, and local registry.
 
-Requires a running SearXNG with JSON output enabled. In SearXNG settings.yml:
+Search only: this raises if SearXNG isn't reachable — it never starts it. The MCP
+`ensure_searxng` tool (ensure_searxng.py) is responsible for bringing the backend up
+before this is called. Requires a running SearXNG with JSON output enabled. In
+SearXNG settings.yml:
   search:
     formats: [html, json]
 Set SEARXNG_URL if not on the default below.
@@ -32,6 +35,12 @@ def web_search(query: str, num_results: int = 5) -> list[dict]:
                 "then restart SearXNG."
             ) from e
         raise
+    except urllib.error.URLError as e:
+        # Connection refused / DNS / timeout → the backend is down.
+        raise RuntimeError(
+            f"SearXNG not reachable at {SEARXNG_URL} — call ensure_searxng first "
+            f"(or ask the user about using the native WebSearch tool). Cause: {e.reason}"
+        ) from e
     return [
         {
             "title": it.get("title", ""),

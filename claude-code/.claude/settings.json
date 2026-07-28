@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ../tools/web_search/ensure_searxng.py --stop"
+          }
+        ]
+      }
+    ]
+  }
+}

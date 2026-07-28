@@ -33,5 +33,5 @@ tools/
 Tools read config from env vars (e.g. `SEARXNG_URL`). Set them in `.mcp.json` `env` for Claude Code, and in your shell/dispatcher for local.
 
 ## Included tools
-- `web_search/` — SearXNG (`SEARXNG_URL`, default `http://localhost:8081`). Local server.
+- `web_search/` — SearXNG (`SEARXNG_URL`, default `http://localhost:8081`), **auto-managed in Docker**. Two MCP tools: `ensure_searxng` (health-check + spawn the container) and `web_search` (search only, raises if the backend is down). Call `ensure_searxng` first; a SessionEnd hook stops the container. Needs Docker. See `web_search/README.md`.
 - `deepwiki/` — docs + Q&A for public GitHub repos. Hosted remote MCP (`mcp.deepwiki.com`); local wrapper needs `pip install mcp`.

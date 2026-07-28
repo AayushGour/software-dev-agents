@@ -1,0 +1,19 @@
+# SearXNG config for the harness-managed container (mounted at /etc/searxng).
+# ensure_searxng.py copies this to settings.yml on first run, replacing __SECRET_KEY__
+# with a generated secret. settings.yml is gitignored (it holds that secret).
+# `use_default_settings: true` overlays these keys onto SearXNG's shipped defaults,
+# so we only specify what the harness needs to change.
+use_default_settings: true
+
+server:
+  secret_key: "__SECRET_KEY__"
+  limiter: false          # disables the rate limiter → no redis/valkey dependency
+  public_instance: false
+
+search:
+  formats:                # REQUIRED — web_search queries with format=json
+    - html
+    - json
+
+general:
+  debug: false
