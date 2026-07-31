@@ -41,6 +41,27 @@ SETTINGS = CFG_DIR / "settings.yml"
 _PORT = urllib.parse.urlparse(SEARXNG_URL).port or 8081
 _UA = {"User-Agent": "ai-harness/1.0"}
 
+# Claude Code launched from a GUI can hand the MCP server a stripped PATH that omits
+# docker. Fall back to the usual install locations before giving up.
+_DOCKER_CANDIDATES = (
+    "/usr/local/bin/docker",
+    "/opt/homebrew/bin/docker",
+    "/Applications/Docker.app/Contents/Resources/bin/docker",
+    "/Applications/OrbStack.app/Contents/MacOS/xbin/docker",
+)
+
+
+def _docker_bin():
+    """Resolve the docker executable: PATH first, then common install dirs. None if absent.
+    (os.path.exists follows symlinks, so a dangling symlink is skipped, not returned.)"""
+    found = shutil.which("docker")
+    if found:
+        return found
+    for p in _DOCKER_CANDIDATES:
+        if os.path.exists(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
 
 def _json_ok(timeout: int = 5) -> bool:
     """True if SEARXNG_URL answers a format=json search — what web_search actually needs."""
@@ -66,16 +87,22 @@ def _listening(timeout: int = 2) -> bool:
 
 
 def _docker_daemon_up() -> bool:
+    docker = _docker_bin()
+    if not docker:
+        return False
     try:
-        return subprocess.run(["docker", "info"], capture_output=True, timeout=15).returncode == 0
+        return subprocess.run([docker, "info"], capture_output=True, timeout=15).returncode == 0
     except Exception:
         return False
 
 
 def _container_exists() -> bool:
+    docker = _docker_bin()
+    if not docker:
+        return False
     try:
         out = subprocess.run(
-            ["docker", "ps", "-aq", "-f", f"name=^{CONTAINER}$"],
+            [docker, "ps", "-aq", "-f", f"name=^{CONTAINER}$"],
             capture_output=True, text=True, timeout=15,
         ).stdout.strip()
         return bool(out)
@@ -93,11 +120,12 @@ def _write_settings_if_absent() -> None:
 
 def _start_container() -> None:
     """Start the harness container — reuse a stopped one, else create it."""
+    docker = _docker_bin()
     if _container_exists():
-        subprocess.run(["docker", "start", CONTAINER], capture_output=True, timeout=30)
+        subprocess.run([docker, "start", CONTAINER], capture_output=True, timeout=30)
     else:
         subprocess.run(
-            ["docker", "run", "-d", "--name", CONTAINER,
+            [docker, "run", "-d", "--name", CONTAINER,
              "-p", f"{_PORT}:8080", "-v", f"{CFG_DIR}:/etc/searxng", IMAGE],
             capture_output=True, timeout=60,
         )
@@ -122,7 +150,7 @@ def ensure() -> str:
             "SearXNG. Enable `search.formats: [html, json]` on it and restart, or free "
             "the port so the harness can manage its own container."
         )
-    if not shutil.which("docker"):
+    if not _docker_bin():
         return "no-docker"
     if not _docker_daemon_up():
         return "daemon-down"
@@ -132,8 +160,9 @@ def ensure() -> str:
 
 
 def stop() -> None:
-    if shutil.which("docker"):
-        subprocess.run(["docker", "stop", CONTAINER], capture_output=True, timeout=30)
+    docker = _docker_bin()
+    if docker:
+        subprocess.run([docker, "stop", CONTAINER], capture_output=True, timeout=30)
 
 
 def _main(argv: list[str]) -> int:

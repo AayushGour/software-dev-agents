@@ -83,11 +83,14 @@ def install_mcp(target: Path, force: bool) -> None:
     with open(DOTCLAUDE.parent / ".mcp.json") as fh:
         config = json.load(fh)
 
-    # Rewrite the relative "../tools/..." path to absolute so it resolves from
-    # wherever <target> lives on disk / whichever OS.
-    web_search = config.get("mcpServers", {}).get("web-search")
-    if web_search:
-        web_search["args"] = [str(TOOLS_DIR / "web_search" / "mcp_server.py")]
+    # Rewrite any relative "../tools/..." arg to absolute so it resolves from wherever
+    # <target> lives on disk / whichever OS. The relative form is for in-harness
+    # dogfooding (cwd = claude-code/); deployed projects need the absolute path. This
+    # preserves surrounding wrapper args (e.g. `uv run --with mcp<2 python <script>`).
+    tools_prefix = f"{TOOLS_DIR.as_posix()}/"
+    for srv in config.get("mcpServers", {}).values():
+        srv["args"] = [a.replace("../tools/", tools_prefix) if isinstance(a, str) else a
+                       for a in srv.get("args", [])]
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(dst, "w") as fh:
@@ -120,8 +123,8 @@ def main() -> None:
 
     print("\nDone. cd into the project and describe the work — Claude Code")
     print("auto-discovers .claude/agents/*.md and routes to the right agent.")
-    print("(web-search MCP tool needs: pip install mcp)")
-    print("(code brain / code-review-graph needs: uv — https://astral.sh/uv)")
+    print("(web-search + code brain both run via uv — install: https://astral.sh/uv)")
+    print("(web-search also needs Docker running for the SearXNG backend)")
 
 
 if __name__ == "__main__":

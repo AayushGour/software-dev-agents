@@ -38,7 +38,10 @@ python3 tools/web_search/cli.py "query"                # search, no MCP (backend
 ```
 
 ## Claude Code
-Registered in `claude-code/.mcp.json`. Needs `pip install mcp` + Docker. Agents call
+Registered in `claude-code/.mcp.json` and launched as
+`uv run --with "mcp<2" python .../mcp_server.py` — `uv` provides the interpreter **and**
+`mcp` (pinned `<2`, since `mcp` 2.0 moved `mcp.server.fastmcp`), so it works even when the
+system `python`/`mcp` are missing. Needs `uv` + Docker. Agents call
 `mcp__web-search__ensure_searxng` then `mcp__web-search__web_search`.
 
 ## Requires
