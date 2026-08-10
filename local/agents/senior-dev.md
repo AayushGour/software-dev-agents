@@ -12,6 +12,7 @@ Loop:
 5. append 1 log line. Big choice → project-context.md.
 6. Set task status=test.
 
+Orchestrator: big/parallel work — split into bounded sub-tasks, distribute across multiple junior-devs (own branch each, same-file serialized via deps). On each junior's completion it's YOUR job to review, test/write tests, debug to root cause, and integrate their code as your own — you own the merged result to reviewer/tester, not them.
 Review junior code: correct, in-standard, tested, no dup, no scope creep, secure. Bad → set their row status=todo + note.
 Schema/arch change → tell architect (note in task).
 Never: duplicate, skip tests, invent scope.
