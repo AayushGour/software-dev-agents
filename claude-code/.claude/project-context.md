@@ -1,6 +1,6 @@
 # Project context — <project>
 
-The single source of truth for WHAT + WHY. business-analyst seeds it; architect adds design; anyone appends decisions.
+The single source of truth for WHAT + WHY. business-analyst seeds it; architect adds design. Decisions are appended by the pen-holder (spawner/architect/PM) — a **spawned** worker returns decisions in its handoff instead of editing this file (single-writer, like the board).
 
 ## Goal
 <problem + why it matters>

@@ -3,7 +3,7 @@
 Two tools, with a contract:
   ensure_searxng  health-check the SearXNG backend, starting its Docker container
                   if it's down. CALL THIS BEFORE web_search.
-  web_search      run a search. RAISES if the backend is down (it does not start it).
+  web_search      run a search. Self-healing: ensures the backend first (starts it if down).
 
 Install once:  pip install mcp
 Registered in claude-code/.mcp.json. Tools appear to agents as
@@ -17,10 +17,10 @@ from ensure_searxng import ensure as _ensure
 mcp = FastMCP(
     "web-search",
     instructions=(
-        "Web search is backed by a local, self-hosted SearXNG. Before your first "
-        "web_search this session, call ensure_searxng to make sure that backend is "
-        "running (it starts it in Docker if needed). Call ensure_searxng again if "
-        "web_search raises a 'not reachable' error. If ensure_searxng reports the "
+        "Web search is backed by a local, self-hosted SearXNG. web_search is "
+        "self-healing: it health-checks the backend and starts its Docker container "
+        "itself — just call it. ensure_searxng remains for an explicit check. If it "
+        "reports the "
         "backend can't be started (no-docker / daemon-down / port-busy / failed), do "
         "NOT silently fall back: tell the user SearXNG can't start, note briefly that "
         "the native WebSearch tool is an external (Anthropic-hosted) search rather than "
@@ -51,8 +51,19 @@ def ensure_searxng() -> str:
 
 @mcp.tool()
 def web_search(query: str, num_results: int = 5) -> str:
-    """Search the web via the local SearXNG backend. Call ensure_searxng FIRST — this
-    tool RAISES if SearXNG is not running (it does not start it)."""
+    """Search the web via the local SearXNG backend. Self-healing: health-checks the
+    backend first and starts its Docker container if it's down (the SessionEnd hook
+    stops it between sessions, so a cold start is the NORMAL case). If the backend
+    can't be started (no-docker / daemon-down / port-busy / failed), returns that
+    status instead of results — then do NOT silently fall back: ask the user before
+    using the native (external) WebSearch tool."""
+    status = _ensure()
+    if not status.startswith(("up", "spawned")):
+        return (
+            f"SearXNG backend unavailable ({status}). Do not silently fall back: "
+            "tell the user the self-hosted search can't start and ask whether to "
+            "use the native WebSearch tool (external, Anthropic-hosted) instead."
+        )
     results = _search(query, num_results)
     if not results:
         return "No results."

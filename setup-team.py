@@ -75,6 +75,28 @@ def rewrite_settings_hooks(target: Path) -> None:
     print(f"  {'.claude/settings.json':<32} ok (hook paths made absolute)")
 
 
+CLAUDE_MD_MARKER = "<!-- harness-team-protocol"
+
+
+def install_root_claude_md(target: Path, force: bool) -> None:
+    """CLAUDE.md is the team's ONE shared rulebook (orchestrator brief + org rules) and
+    must live at the project root — Claude Code only auto-loads <project>/CLAUDE.md,
+    and every spawned agent is told to read it first. It's a framework file, so
+    --force upgrades it — but ONLY when the existing file carries the harness marker
+    line. A user's own CLAUDE.md is never touched (merge by hand if wanted)."""
+    src = SOURCE / "CLAUDE.md"
+    dst = target / "CLAUDE.md"
+    if dst.exists():
+        if not dst.read_text(errors="ignore").startswith(CLAUDE_MD_MARKER):
+            print(f"  {'CLAUDE.md':<32} keep (not the harness rulebook — merge manually)")
+            return
+        if not force:
+            print(f"  {'CLAUDE.md':<32} skip (exists)")
+            return
+    shutil.copy2(src, dst)
+    print(f"  {'CLAUDE.md':<32} ok (team rulebook)")
+
+
 def install_mcp(target: Path, force: bool) -> None:
     dst = target / ".mcp.json"
     if dst.exists() and not force:
@@ -119,6 +141,7 @@ def main() -> None:
     # .mcp.json is the ONE file that must live at the project root — Claude Code
     # only discovers project MCP servers from <project>/.mcp.json, not from .claude/.
     print("root files:")
+    install_root_claude_md(target, args.force)
     install_mcp(target, args.force)
 
     print("\nDone. cd into the project and describe the work — Claude Code")
