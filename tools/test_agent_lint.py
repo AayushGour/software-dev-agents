@@ -72,6 +72,28 @@ class LintTree(unittest.TestCase):
         self.assertTrue(any("researcher" in v and "Write" in v for v in vs))
         self.assertTrue(any("researcher" in v and "Agent" in v for v in vs))
 
+    def test_researcher_must_not_hold_task_the_agent_alias(self):
+        # `Task` is the pre-2.1.63 name for `Agent` and is still live — a leaf that
+        # declares it can fan out, and lints must say so.
+        bad = LEAF.replace("tools: Read, Grep, Glob", "tools: Read, Task")
+        write(self.d, "researcher.md", bad)
+        vs = al.lint_tree(self.d)
+        self.assertTrue(any("researcher is a leaf" in v and "Agent" in v for v in vs), vs)
+
+    def test_deep_researcher_task_alias_satisfies_agent(self):
+        body = LEAF.replace("name: researcher", "name: deep-researcher") \
+                   .replace("tools: Read, Grep, Glob", "tools: Read, Write, Task")
+        write(self.d, "deep-researcher.md", body)
+        self.assertEqual(al.lint_tree(self.d), [])
+
+    def test_missing_dir_is_a_violation_not_a_clean_run(self):
+        rc = al.main(["agent_lint.py", str(self.d / "does-not-exist")])
+        self.assertEqual(rc, 1)
+
+    def test_non_utf8_file_is_reported_not_crashed(self):
+        (self.d / "binary.md").write_bytes(b"---\nname: a\ndescription: \xff\xfe\ntools: Read\n---\n")
+        al.lint_tree(self.d)  # must not raise
+
     def test_research_subdir_requires_rsr_prefix(self):
         write(self.d, "research/grpc.md", LEAF.replace("name: researcher", "name: grpc"))
         self.assertTrue(any("rsr-" in v for v in al.lint_tree(self.d)))

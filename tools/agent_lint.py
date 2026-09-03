@@ -16,8 +16,25 @@ Enforced:
   6. no Agent(type, ...) allowlists — the type list is ignored in a subagent
      definition, so writing one states a guarantee that does not hold
 
+`Task` is the pre-2.1.63 alias for `Agent` and is still live, so rules 3, 4 and 6
+treat the two names as the same tool.
+
+Not enforced — a clean run does NOT certify any of these:
+  - the leaf/orchestrator tool-set invariant for authored rsr-* files. The linter
+    cannot know a file's remaining depth, so it cannot tell a legitimate orchestrator
+    variant (Write + Agent, correct at remaining depth >= 1) from a leaf that wrongly
+    holds them. Only `researcher` and `deep-researcher` have fixed, checkable shapes.
+  - whether a pasted orchestrator body actually carries `## Fences` and
+    `## Special mode`. An rsr-* orchestrator missing either one lints clean and
+    silently drops the no-build-role rule, the concurrency cap, or the special branch.
+  - tool NAMES. Nothing here checks a tool exists: a typo'd `mcp__deepwiki__ask`
+    grants nothing at all and lints clean, as does any other misspelled MCP tool.
+Everything above is a prompt rule enforced by reading, not by this script.
+
 Usage:  python3 tools/agent_lint.py [agents_dir ...]
-Exit 1 with one line per violation; exit 0 when clean."""
+Exit 1 with one line per violation; exit 0 when clean.
+A directory that does not exist or cannot be read is itself a violation — scanning
+nothing is not a pass."""
 import re
 import sys
 from pathlib import Path
@@ -28,6 +45,10 @@ RSR_PREFIX = "rsr-"
 DESC_PREFIX = "Research specialist —"
 LEAF_FORBIDDEN = ("Write", "Agent")
 ORCHESTRATOR_REQUIRED = ("Write", "Agent")
+# `Task` was renamed to `Agent` in 2.1.63; the old name is still a live alias, and
+# architect.md / project-manager.md / senior-dev.md still declare it — so it is what a
+# future author copies. Both names must satisfy (and violate) the same rules.
+TOOL_ALIASES = {"Agent": ("Agent", "Task")}
 
 _FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 _ALLOWLIST_RE = re.compile(r"\b(?:Agent|Task)\s*\(")   # Task is the pre-2.1.63 alias
@@ -54,12 +75,28 @@ def tools_of(fm: dict):
     return [t.strip() for t in raw.split(",") if t.strip()]
 
 
-def lint_tree(agents_dir: Path) -> list:
+def declared_as(tools: list, tool: str):
+    """The name `tool` is actually declared under, or None. Aliases count: a file that
+    lists `Task` holds `Agent`, for both the leaf ban and the orchestrator requirement."""
+    for alias in TOOL_ALIASES.get(tool, (tool,)):
+        for t in tools:
+            if t == alias or t.startswith(alias + "("):
+                return t
+    return None
+
+
+def lint_tree(agents_dir: Path) -> list[str]:
     violations = []
     seen = {}
     for path in sorted(agents_dir.rglob("*.md")):
         rel = path.relative_to(agents_dir).as_posix()
-        fm = parse_frontmatter(path.read_text())
+        try:
+            # errors="replace" so a non-UTF-8 file is linted, not a traceback (board_lint.py style)
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            violations.append(f"{rel}: unreadable, not linted — {exc.strerror or exc}")
+            continue
+        fm = parse_frontmatter(text)
         if fm is None:
             violations.append(f"{rel}: no frontmatter block")
             continue
@@ -85,11 +122,14 @@ def lint_tree(agents_dir: Path) -> list:
 
         if name == "researcher":
             for forbidden in LEAF_FORBIDDEN:
-                if any(t == forbidden or t.startswith(forbidden + "(") for t in tools):
-                    violations.append(f"{rel}: researcher is a leaf and must not hold {forbidden}")
+                got = declared_as(tools, forbidden)
+                if got:
+                    alias = "" if got.split("(")[0] == forbidden else f" (declared as {got})"
+                    violations.append(
+                        f"{rel}: researcher is a leaf and must not hold {forbidden}{alias}")
         if name == "deep-researcher":
             for required in ORCHESTRATOR_REQUIRED:
-                if not any(t == required or t.startswith(required + "(") for t in tools):
+                if declared_as(tools, required) is None:
                     violations.append(f"{rel}: deep-researcher orchestrates and needs {required}")
 
         if rel.split("/")[0] == RESEARCH_SUBDIR:
@@ -107,8 +147,11 @@ def main(argv) -> int:
     violations = []
     for d in dirs:
         p = Path(d)
-        if p.is_dir():
-            violations += [f"{d}/{v}" for v in lint_tree(p)]
+        if not p.is_dir():
+            violations.append(f"{d}: not a readable directory — nothing was scanned. "
+                              "A clean run over zero files is not a pass.")
+            continue
+        violations += [f"{d}/{v}" for v in lint_tree(p)]
     for v in violations:
         print(v, file=sys.stderr)
     print(f"agent_lint: {len(violations)} violation(s) across {len(dirs)} dir(s)")
