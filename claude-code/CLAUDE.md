@@ -98,9 +98,12 @@ status: todo | wip | review | test | done | blocked
 A `done` line must carry evidence: `status:done  evidence:<ref>` (tester log anchor, or the deliverable itself for non-code tasks) — the board-lint hook blocks evidence-less or unresolvable refs, and blocks Bash writes to the board entirely (board changes go through Edit/Write). Done is authorized by **tester** and recorded by the board writer (integrity rules 1+2). A dev's furthest status is `test`.
 
 ## Delegation
-Use the `Task` tool. Give the target: task id · the one objective · exact files · constraints · expected return format (status + evidence + decisions). Spawn parallel copies for independent tasks (one message, multiple Task calls).
+Use the `Agent` tool. Give the target: task id · the one objective · exact files · constraints · expected return format (status + evidence + decisions). Spawn parallel copies for independent tasks (one message, multiple Agent calls).
+(The tool was renamed `Task` → `Agent` in v2.1.63; `Task` still works as an alias. Note that
+`Agent(type1, type2)` allowlists only bind an agent running as the main thread — inside a
+subagent definition the type list is **ignored**, so a subagent's fence must be written in prose.)
 - **Carry findings downward** — pass verified facts (file paths, signatures, "X already does Y, reuse it"), not a restated goal the next agent must re-derive.
-- **Don't spawn a subagent for what one grep/read answers** — a direct tool call is cheaper. Never fire a placeholder Task.
+- **Don't spawn a subagent for what one grep/read answers** — a direct tool call is cheaper. Never fire a placeholder Agent call.
 - **No duplicate planning** — architect is the single understand+design step; don't run a separate explore pass then a plan pass.
 - architect → senior-dev (hard) / junior-dev (easy) / devops (infra); pulls ux-designer + product-engineer when planning.
 - senior-dev → junior-dev for sub-tasks, then reviews; escalates complex asks up to architect.
@@ -123,8 +126,38 @@ Report done in the form: "done — logged, board:<status>, standards:ok". If one
 ## Common rules (every agent)
 - **Clarify if unsure.** Don't invent requirements — ask, or note the assumption in .claude/project-context.md (via your spawner if you were spawned).
 - **The DONE gate above is mandatory.** Logging and task-board updates are not busywork — they are the team's only shared memory. Unlogged work is invisible and gets redone.
-- **Devs write unit tests.** No feature ships without them.
-- **Research + fact-check** before building on an unfamiliar library or claim — agents with the tools use `mcp__web-search__web_search` (self-healing: it auto-starts its local SearXNG backend) and `mcp__deepwiki__*` (public-repo docs); agents without them ask their spawner to research, or record the assumption.
+- **Devs write unit tests — then try to break them.** No feature ships without tests, and a green suite is not evidence until you have tried to falsify it. After the tests pass: **mutate the code under test** (flip a condition, shift a boundary by one, return a constant/empty, delete a line) and rerun — the test MUST go red. Still green = the test is worthless; fix the test, not the mutant. Then attack what the tests assume away (boundaries, empty/null, invalid input, duplicates, ordering/concurrency) — anything that breaks the code and no test caught becomes a new test + a fix. **Revert every mutation** (`git diff` clean of them) and rerun green before handing off. Report what you tried to break and what it exposed; "tests pass" alone is not a handoff.
+
+## Research
+Outside knowledge, or digging in an unfamiliar domain, goes to research — not inline in
+whoever happens to be holding the task. Findings, not raw pages, come back.
+- **researcher** — one self-contained question, cheap, no fan-out, no files.
+- **deep-researcher** — recon, decompose, fan out, synthesize, write a report.
+
+**MAIN THREAD ONLY — the depth menu.** Subagents cannot call AskUserQuestion, so a spawned
+agent physically cannot ask. When any agent requests research, or the user does, the MAIN
+THREAD presents the menu and spawns with mode + depth + breadth baked into the prompt.
+**Never guess the depth** — a research request without a chosen depth is not actionable.
+
+| Option | Budget | Agents | For |
+|---|---|---|---|
+| Quick | — | 1 | one lookup: which lib, does X support Y, what version. Chat only, no report. |
+| Deep | depth 1, breadth 4 | `1 + 4` = 5 | comparisons, tradeoff calls, anything you will cite later. |
+| Special | depth 2, breadth 4 | `1 + 4 + 16` = 21 | architecture decisions, unfamiliar domains, where a wrong answer costs weeks. Authors reusable `rsr-*` specialists. |
+| Custom | caller sets | caller does the math | scope fences, odd shapes. Concurrency cap is 20 — breadth 6 at depth 2 is 36 concurrent and queues. |
+
+Counts are ceilings. Fewer real sub-questions means fewer agents, and a question that recon
+already answers should spawn none at all.
+
+Fences at every level:
+- carry the ROOT QUESTION **verbatim** into every child prompt
+- children narrow, never widen — off-scope finds are reported as open threads, not chased
+- every child returns `relevance:`; unfillable relevance is drift, and it says so
+- research agents spawn only `researcher`, `deep-researcher`, or `rsr-*` — **never a build role**
+- reports: `.claude/research/YYYY-MM-DD-<topic>.md`
+- authored specialists: `.claude/agents/research/rsr-<domain>.md`, `description` starts
+  `Research specialist —`; glob and reuse before authoring a new one
+- verify a tree of agent files with `python3 tools/agent_lint.py claude-code/.claude/agents`
 - Follow `.claude/coding-standards.md` — its **Non-negotiables** (DRY, no magic strings, config in one place, consistency, lint clean) apply to every project by default. Update `.claude/project-context.md` when a real decision is made.
 - Match ceremony to task size. A typo doesn't need the full loop.
 
