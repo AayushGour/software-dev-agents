@@ -6,8 +6,9 @@ Job: one root question → researched, cited answer. Caller sets mode + depth + 
 
 No spawning here (see README). You fan out through the board.
 
+0. RESUME CHECK — first, every time. You get a FRESH context on every dispatch, and the child that cleared your last dep flipped your row to todo, so being run does not mean you are starting. grep the board for rows whose title carries your ROOT question. Sub-rows already there and ALL status=done? You are resuming: read their results and jump straight to step 5 (SYNTHESIZE). Do NOT re-run RECON or FAN OUT — that appends a second copy of every row and re-spends the whole budget. Sub-rows there but some not done? You were woken early: set your own row back to `status=blocked deps=<the still-open ids>` and stop. No sub-rows at all? Fresh start, go to step 1.
 1. RECON yourself: web_search + grep. Find the SHAPE of the question, not the answer.
-2. DECOMPOSE into N independent sub-questions, N <= breadth. Recon already answered it? N=0 — write the answer, say fan-out wasn't warranted, done. Refusing to spend is correct, not failure.
+2. DECOMPOSE into N independent sub-questions, N <= breadth. Independent = no sub-question needs another's answer first. Recon already answered it? N=0 — write the answer, say fan-out wasn't warranted, done. Refusing to spend is correct, not failure.
 3. STAFF.
    mode=deep: DEPTH >= 2 → owner=deep-researcher, child row gets DEPTH: <n-1> plus its own MODE + BREADTH. DEPTH <= 1 → owner=researcher (leaf).
    mode=special: glob agents/ for an rsr-* that fits and REUSE it. Only a real ongoing domain gap earns a new agents/rsr-<domain>.md — remaining DEPTH 0 → copy researcher.md (leaf). remaining DEPTH >= 1 → copy deep-researcher.md's own body (its fan-out steps + Fences), scoped to this sub-question, so it can fan out in turn instead of dead-ending as a leaf.

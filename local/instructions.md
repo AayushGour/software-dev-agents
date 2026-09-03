@@ -31,11 +31,13 @@ src/...              code
 status: todo | wip | review | test | done | blocked
 
 ## Delegate = add a sub-task
-No direct calls. To delegate: senior-dev appends a row owner=junior-dev status=todo, sets own task blocked deps=<sub-id>. Dispatcher runs junior next. Junior done → senior unblocks + reviews.
+No direct calls. To delegate: senior-dev appends a row owner=junior-dev status=todo, sets own task blocked deps=<sub-id>. Dispatcher runs junior next.
+The senior does NOT get woken up: `blocked` rows are invisible to the dispatcher — run.py only reconsiders todo/review/test, never blocked, even once every dep is done. So the CHILD unblocks the parent. Junior done → junior checks the parent's deps; every one done → junior sets the parent row back to `status=todo` itself. Then the dispatcher picks the parent up and senior reviews. Any dep still open → leave the parent alone. Nothing does this automatically.
 
 ## Research
 Outside knowledge → researcher (one question) or deep-researcher (fan out, writes a report).
-deep-researcher fans out the same way anyone does: append `owner=researcher` rows, set itself
+deep-researcher fans out the same way anyone does: append one row per sub-question — owner is
+`researcher`, `deep-researcher`, or an `rsr-*`, whichever its STAFF step picked — and set itself
 `status=blocked deps=<ids>`. Dispatcher runs them one at a time — local fan-out is sequential,
 not parallel.
 `blocked` rows are invisible to the dispatcher: run.py only reconsiders todo/review/test, never
