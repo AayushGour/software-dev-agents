@@ -1,7 +1,9 @@
 # Research agents — generic, deep, and special research — design
 
 **Date:** 2026-09-03
-**Status:** Approved (design), pending implementation
+**Status:** Implemented, **unverified** — every file below is written and the linter is green,
+but all 14 runtime scenarios are NOT RUN (creating an agents directory for the first time in a
+scope needs a session restart). See `## Verification`.
 **Component:** `claude-code/.claude/agents/researcher.md`, `claude-code/.claude/agents/deep-researcher.md`, `claude-code/.claude/researcher-template.md`, `claude-code/.claude/agents/research/`, `claude-code/CLAUDE.md`, `local/agents/*`, `local/instructions.md`, `setup-team.py`
 
 ## Problem
@@ -117,10 +119,13 @@ in:  root question + mode + depth + breadth + any caller fences
               Building an orchestrator variant (remaining depth >= 1) means pasting more than
               LOOP steps 2-5. Those four steps alone (DECOMPOSE/STAFF/SPAWN/SYNTHESIZE) leave the
               pasted STAFF step's `mode=special` branch pointing at a `## Special mode` section
-              the file never received, and drop `## Fences` entirely — losing the no-build-role
-              rule and the concurrency cap, with nothing downstream to re-state them. Building an
-              orchestrator variant means ALL of: add `Write, Agent` to `tools:`; paste LOOP steps
-              2-5; ALSO paste `## Fences` verbatim; ALSO paste `## Special mode` itself; and
+              the file never received, drop `## Fences` entirely — losing the no-build-role rule
+              and the concurrency cap, with nothing downstream to re-state them — and drop RECON,
+              which the pasted step 2 immediately references ("if recon already answered the root
+              question, N = 0"). Building an orchestrator variant means ALL of: add `Write, Agent`
+              to `tools:`; paste LOOP steps **1-5**, RECON included, so the authored orchestrator
+              runs its own cheap recon on its own narrower sub-question; ALSO paste `## Fences`
+              verbatim; ALSO paste `## Special mode` itself; and
               REPLACE — not supplement — the leaf template's `## Method`, seven-field `RETURN`,
               `NEVER:`, and `DONE:` with orchestrator-appropriate text mirroring deep-researcher's
               own closing `CONSULT:` / `NEVER:` / `DONE:`. An orchestrator's contract with its
@@ -135,8 +140,18 @@ in:  root question + mode + depth + breadth + any caller fences
 
 5 SYNTHESIZE  conflicts are NAMED, not averaged. Unanswered stays unanswered.
               Write .claude/research/YYYY-MM-DD-<topic>.md — question, answer, evidence,
-              sources, confidence, conflicts, open threads, agents used.
-              Return a short summary + the report path to the caller.
+              sources, confidence, conflicts, open threads, sub-questions, and a real
+              `## Agents used` SECTION (one row per agent: authored / reused / stock),
+              not just the metadata line's count. That section is the only detection
+              mechanism for the build-role fence, and it is complete only because each
+              orchestrator child reports its own agents upward — a root cannot see its
+              grandchildren.
+              <topic> is a slug of the ROOT question (lowercase, hyphenated, 3-6 words),
+              so every agent in one run derives the same one. Only the root writes the
+              bare name; a non-root appends its own sub-question's slug
+              (YYYY-MM-DD-<root>--<sub>.md). Up to 1+b+b^2 agents write into one dated
+              directory and Write overwrites silently, so uniqueness is structural.
+              Return a short summary + relevance + agents used + the report path.
 ```
 
 **Termination.** Three independent stops, first one wins:
@@ -172,7 +187,11 @@ not seven fields. Two variants, matching the delivered `claude-code/.claude/agen
 - **Orchestrator child** (`deep-researcher`, or an `rsr-*` with remaining depth ≥ 1) — it fans out
   again, so it needs its own budget or it will stop and ask you for one:
   `MODE: <mode>   BREADTH: <breadth>`
-  `RETURN: a short synthesis + the path of the report you wrote`
+  `RETURN: a short synthesis + relevance + agents used + the path of the report you wrote`
+
+An orchestrator child is **not** exempt from `relevance:` — fence 3 below is absolute, and drift at
+an orchestrator costs a whole sub-tree. It also returns its **agents used** so the root's
+`## Agents used` section can name grandchildren it never saw.
 
 `OUT OF SCOPE` listing the siblings is what stops four children converging on the same tangent.
 
@@ -185,10 +204,21 @@ privilege.
 question. A child that cannot fill that line honestly has drifted and says so. The orchestrator drops
 or demotes those findings at synthesis rather than blending them in.
 
-**4. Authored agents are scoped at birth.** In special mode the tailored file's `description` and
-`DO:` are written *against the root question*, not the domain in general —
-`"Research specialist — <root topic>: <domain> aspects"`, not `"gRPC expert"`. The fence lives in the
-file, so it survives into the grandchildren that agent spawns.
+**4. Authored agents are scoped at birth — as PROVENANCE, not as a fence.** In special mode the
+tailored file's `description` and `DO:` are written against the root question it was built for —
+`"Research specialist — <root topic>: <domain> aspects"`, not `"gRPC expert"` — so a later
+orchestrator can see at a glance what domain the agent knows, and judge reuse against it.
+
+**That root-topic clause does not fence the file to that root question.** The live fence is the
+`ROOT QUESTION:` line in the prompt at spawn time, and **the runtime prompt always overrides the
+file's `description` and `DO:`**. Reuse is therefore judged on **domain fit**, never on
+root-question match, and a reused agent is correctly scoped the moment it is spawned.
+
+This is load-bearing, not a nuance. Read as a scope fence, this rule and Roster hygiene's
+reuse-before-authoring are mutually exclusive: a file whose identity is root question A can never
+"fit" root question B, so nothing is ever reused, and the only brake on roster growth never
+engages — while the Risks section accepts unbounded growth *on the strength of that brake*. The
+prompt scopes the run; the file records the domain.
 
 ## Roster hygiene
 
@@ -201,8 +231,18 @@ naming is load-bearing, not cosmetic.
   for a build role.
 - **Location** `.claude/agents/research/` — subdirectories are scanned recursively and the path does
   not affect identity.
-- **Reuse before authoring** — glob the directory and reuse a match. This is the growth brake; there
-  is no prune job in v1.
+- **Reuse before authoring** — glob the directory and reuse a match on **domain fit**. The root
+  topic in an existing `description` is provenance, not a scope fence (Drift control, fence 4), and
+  the runtime prompt's ROOT QUESTION overrides the file — so an agent authored under one root
+  question is correctly scoped for another the moment it is spawned. This is the growth brake and
+  there is no prune job in v1, so it has to actually fire.
+- **Name qualification under concurrency.** Sibling orchestrators glob and write into this one flat
+  `rsr-*` namespace *in parallel*, and each one's glob is a snapshot taken before its siblings
+  wrote. This is the only place in the design that generates concurrent name selection, and
+  collisions are silent. Rule: the root writes `rsr-<domain>`; every non-root orchestrator writes
+  `rsr-<its-own-sub-question-slug>-<domain>`. Siblings are handed disjoint sub-questions by
+  construction, so their namespaces cannot overlap. Reuse is unaffected — it matches on the
+  description's domain, never on the prefix.
 - `setup-team.py` ships `.claude/agents/research/.gitkeep` so the directory pre-exists — creating an
   agents directory for the first time in a scope is one of the three cases that needs a restart.
 
@@ -305,11 +345,17 @@ These are the load-bearing constraints. Each corrected an earlier assumption in 
 
 ## Risks
 
-- **Roster growth.** Persist + per-level authoring means a few big investigations can leave 30+
-  `rsr-*` files. Reuse-first globbing slows it; nothing stops it. Accepted for v1; a `--clean` pass
-  is future work.
-- **Cost.** `special, depth 2, breadth 4` = up to 21 agents, orchestrators on opus. The menu states
-  the count before spawning, which is the mitigation.
+- **Roster growth. Unmeasured — prediction, not observation.** Persist + per-level authoring means a
+  few big investigations can leave 30+ `rsr-*` files. Reuse-first globbing slows it; nothing stops
+  it. The whole mitigation rests on reuse actually firing, which is why fence 4's root-topic clause
+  is provenance rather than a scope fence (Drift control) — read the other way, reuse can never
+  match and this risk is unbounded. No `special`-mode run has been executed, so the real reuse rate
+  is unknown; Scenario F (Task 8) is the first measurement. Accepted for v1; a `--clean` pass is
+  future work.
+- **Cost. Unmeasured — arithmetic, not observation.** `special, depth 2, breadth 4` = up to 21
+  agents, orchestrators on opus. The menu states the count before spawning, which is the
+  mitigation. No run has happened, so the actual agent count, token spend and wall-clock of a real
+  fan-out are all unknown — the `1 + b + b²` figure is a ceiling derived on paper.
 - **Hot-reload — measured, not predicted.** Two distinct cases, not one. (1) Editing or adding an
   agent file **inside an already-existing watched directory** — e.g. authoring `rsr-*` files
   during a `special`-mode run — hot-loads within seconds; this is the platform's own documented
@@ -366,15 +412,50 @@ These are the load-bearing constraints. Each corrected an earlier assumption in 
 - `local/README.md` — modified (roster line)
 - `setup-team.py` — modified (seed `.claude/research/`; roster hint text)
 - `decisions.md` — modified (decision entry)
+- `tools/agent_lint.py` — new (frontmatter invariants; the design's only mechanical gate)
+- `tools/test_agent_lint.py` — new (unit tests for the above)
+- `tools/README.md` — modified (`agent_lint.py` entry under Included tools)
+- `claude-code/.claude/research/.gitkeep` — new (report destination pre-exists at install)
+- `docs/superpowers/plans/2026-09-03-research-agents-test-log.md` — new (scenario matrix + the
+  restart-blocker evidence; every scenario NOT RUN)
 
 ## Verification
 
-- Every new/modified agent file's frontmatter parses and lists only tools that exist.
-- `researcher` has no `Write` and no `Agent`; `deep-researcher` has both.
-- Spawn `deep-researcher` in `deep` mode on a real question: 1 + N children appear, a report lands in
-  `.claude/research/`, and the returned summary cites it.
+**Status: all 14 runtime scenarios are NOT RUN.** The full matrix, each scenario's method and
+acceptance criteria, and the evidence for the blocker live in
+**`docs/superpowers/plans/2026-09-03-research-agents-test-log.md`** — read that before assuming any
+behaviour below has been observed.
+
+The blocker is structural, not scheduling: **creating an agents directory for the first time in a
+scope does not hot-load**, and it is one of the platform's three documented restart-required
+exceptions. This was probed directly (a fresh `.claude/agents/`, a throwaway agent file, two spawn
+attempts ~90 s apart, both `Agent type '<name>' not found`). No amount of waiting inside this
+session clears it, so nothing that requires spawning a research agent could be executed. Scenario N
+(local parity) is blocked *permanently* by `local/run.py:83`, not by the restart.
+
+Ran and green (static checks only — these certify files, not behaviour):
+- `python3 tools/agent_lint.py claude-code/.claude/agents` — 0 violations. Covers: frontmatter
+  parses, `tools:` declared explicitly everywhere, names unique tree-wide, `researcher` holds
+  neither `Write` nor `Agent` (nor the `Task` alias), `deep-researcher` holds both, `rsr-` naming
+  and description prefix, no `Agent(...)` allowlists.
+- `PYTHONPATH=tools python3 -m unittest test_agent_lint -v` — 17 tests, all pass.
+- The linter's own coverage gap is stated in its docstring and in `CLAUDE.md`: it cannot check the
+  seven fences, cannot know an `rsr-*` file's remaining depth (so cannot check its leaf/orchestrator
+  tool set), and does not validate tool NAMES. **Linter-clean is not fence-clean.**
+
+NOT RUN, pending a session restart — each is a live scenario in the test log:
+- Spawn `deep-researcher` in `deep` mode on a real question: 1 + N children appear, a report lands
+  in `.claude/research/`, and the returned summary cites it. *(Scenario B)*
 - Spawn in `special` mode: an `rsr-*.md` is authored in `.claude/agents/research/`, then spawned in
-  the same session — this is the hot-reload claim under test.
-- Re-run `special` on a related question: the existing `rsr-*` is **reused**, not re-authored.
-- Drift check: read the report's per-child `relevance:` lines; every one bears on the root question.
-- `setup-team.py --force` into a scratch dir produces `.claude/agents/research/` and both new agents.
+  the same session — the hot-reload claim under test. *(Scenario E)*
+- Re-run `special` on a related question: the existing `rsr-*` is **reused**, not re-authored — the
+  growth brake, and the direct test of fence 4 being provenance rather than a scope fence.
+  *(Scenario F)*
+- Drift check: read the report's per-child `relevance:` lines; every one bears on the root
+  question. *(Scenario D)*
+- Build-role fence under an actual attempt. *(Scenario I)*
+- Degraded source: `web_search`/deepwiki down, run completes anyway. *(Scenario L)*
+- `setup-team.py --force` into a scratch dir produces `.claude/agents/research/` and both new
+  agents.
+- Every agent file lists only tools that **exist** — the linter cannot check this, so it needs a
+  live spawn.
