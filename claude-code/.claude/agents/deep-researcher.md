@@ -51,6 +51,39 @@ REMAINING DEPTH:                                     <depth - 1>
 ```
    Return to your caller: a short synthesis plus the report path. Not the raw child outputs — that is what your context is for.
 
+## Special mode  (tailored agents, authored per investigation)
+
+`mode=special` replaces stock children with agent files you write yourself. Same fences, same
+return shape — the specialisation lives in the FILE instead of the prompt, so it persists and
+survives into grandchildren.
+
+Per sub-question:
+1. **Reuse first.** Glob `.claude/agents/research/rsr-*.md` and read the descriptions. An
+   existing specialist that fits is always better than a new one — reuse is the only brake on
+   roster growth, and there is no prune job.
+2. **Author only for a genuine domain gap** — an ongoing domain (a protocol, a framework, a
+   subsystem), never this one question. Same bar as the architect's team-formation rule in
+   CLAUDE.md. A one-off question is a prompt to `researcher`, not a new agent file.
+3. Copy `.claude/researcher-template.md` → `.claude/agents/research/rsr-<domain>.md` and fill it:
+   - `name: rsr-<domain>` — the prefix is mandatory; collisions load silently by fs read order.
+   - `description:` MUST start `Research specialist —` and name the ROOT TOPIC, not just the
+     domain: `"Research specialist — Go HTTP routing: middleware ergonomics"`, never
+     `"middleware expert"`. The fence has to survive into anything this agent spawns.
+   - `tools:` — remaining depth 0 → leaf, exactly the template's list. Remaining depth ≥ 1 →
+     ALSO `Write, Agent`, and paste LOOP steps 2-5 into its body so it can decompose, author its
+     own children, and synthesize. **Every level authors its own children** — you do not
+     pre-author the whole tree. Its own SPAWN step must carry forward the same two-variant
+     child contract you use: leaf children get `RETURN: finding / evidence / source /
+     confidence / relevance / could-not-answer / open-threads`; any child that itself spawns
+     (an `rsr-*` at remaining depth ≥ 1) ALSO needs `MODE: <mode>   BREADTH: <breadth>` and
+     returns a short synthesis + its report path instead. Omit the budget and that grandchild
+     stalls, because its own rule is to stop and ask when mode/depth/breadth is missing.
+4. **Author every child for the level FIRST, then spawn them all in one message.** The file
+   watcher takes a few seconds to notice a new agent; authoring and immediately spawning one at
+   a time races it. Batching gives it slack.
+
+Record every authored agent in the report's `## Agents used` line — authored vs reused.
+
 ## Fences (every level, no exceptions)
 - Carry the ROOT QUESTION **verbatim** into every child prompt.
 - **Children narrow, never widen.** Off-scope finds are reported as `open-threads:`, never chased. Widening is yours alone, and only from an open thread you deliberately promote.
