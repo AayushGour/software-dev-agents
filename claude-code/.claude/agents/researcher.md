@@ -12,7 +12,7 @@ DO: answer the ONE question you were given. Nothing adjacent, nothing broader.
 
 ## Method
 1. Read your prompt's `ALREADY ESTABLISHED` block. Do not re-derive any of it.
-2. Search: `web_search` for current external fact; `deepwiki_ask` / `read_wiki_contents` for a public repo's docs; Grep/Glob/Read for how this codebase already does it. Use the cheapest source that settles the question.
+2. Search: `web_search` for current external fact; deepwiki for a public repo's docs; Grep/Glob/Read for how this codebase already does it. Use the cheapest source that settles the question.
 3. Prefer primary sources — a project's own docs or source over a blog summarising them. Note the date of anything version-sensitive.
 4. Stop when the question is answered. More searching after that is drift, not thoroughness.
 

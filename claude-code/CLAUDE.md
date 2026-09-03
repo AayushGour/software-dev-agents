@@ -141,15 +141,30 @@ agent physically cannot ask. When any agent requests research, or the user does,
 THREAD presents the menu and spawns with mode + depth + breadth baked into the prompt.
 **Never guess the depth** — a research request without a chosen depth is not actionable.
 
+**Spawned and you need research? Return the request to your spawner — do not guess a depth,
+and do not research it inline.** Say what needs researching and why, hand it back, and carry
+on with whatever else you can finish. A spawner that already has the answer just answers you.
+A spawner that also has no menu bubbles it upward the same way, return by return, until it
+reaches the main thread — the only place in the whole call stack where AskUserQuestion works.
+The main thread then spawns research fresh with the chosen budget; it does **not** resume you
+mid-stack, so never block waiting on it. If the work truly cannot wait, **record the assumption**
+in `.claude/project-context.md` (via your spawner) and flag it as unresearched. A silent guess
+is the one option that is never available.
+
 | Option | Budget | Agents | For |
 |---|---|---|---|
 | Quick | — | 1 | one lookup: which lib, does X support Y, what version. Chat only, no report. |
 | Deep | depth 1, breadth 4 | `1 + 4` = 5 | comparisons, tradeoff calls, anything you will cite later. |
 | Special | depth 2, breadth 4 | `1 + 4 + 16` = 21 | architecture decisions, unfamiliar domains, where a wrong answer costs weeks. Authors reusable `rsr-*` specialists. |
-| Custom | caller sets | caller does the math | scope fences, odd shapes. Concurrency cap is 20 — breadth 6 at depth 2 is 36 concurrent and queues. |
+| Custom | caller sets | caller does the math | scope fences, odd shapes. Concurrency cap is 20 — breadth 6 at depth 2 is 36 concurrent and queues. Depth still caps at the platform ceiling below. |
 
 Counts are ceilings. Fewer real sub-questions means fewer agents, and a question that recon
 already answers should spawn none at all.
+
+**Platform ceiling: nesting stops 3 layers below the main conversation**, whatever Custom asks
+for. A `deep-researcher` spawned from here is layer 1, its children layer 2, theirs layer 3 — so
+**`depth 2` is the deepest that actually runs** and `depth 3` cannot be honoured. Don't offer a
+depth the runtime will refuse; a clamped run says so in its report.
 
 Fences at every level:
 - carry the ROOT QUESTION **verbatim** into every child prompt
@@ -159,7 +174,15 @@ Fences at every level:
 - reports: `.claude/research/YYYY-MM-DD-<topic>.md`
 - authored specialists: `.claude/agents/research/rsr-<domain>.md`, `description` starts
   `Research specialist —`; glob and reuse before authoring a new one
-- verify a tree of agent files with `python3 tools/agent_lint.py claude-code/.claude/agents`
+- verify a tree of agent files with `python3 <harness>/tools/agent_lint.py .claude/agents` —
+  `.claude/agents` is *this project's* agents dir, which is where `rsr-*` files actually get
+  authored; `agent_lint.py` ships with the harness repo, not alongside this file, so substitute
+  wherever that is checked out. It **only** checks frontmatter (explicit `tools:`, unique names,
+  `rsr-` naming + description prefix, the two fixed `researcher`/`deep-researcher` tool sets, no
+  `Agent(...)` allowlists). It does **not** check any of the seven fences above, whether an
+  authored `rsr-*` carries the tool set its remaining depth requires, whether a pasted
+  orchestrator body kept `## Fences` and `## Special mode`, or that tool names are spelled right
+  — a typo'd MCP tool grants nothing and still lints clean. **Linter-clean is not fence-clean.**
 
 ## Roles (one file each in .claude/agents/)
 **Core (10):** business-analyst · project-manager · architect · product-engineer · ux-designer · senior-dev · junior-dev · devops · reviewer · tester
