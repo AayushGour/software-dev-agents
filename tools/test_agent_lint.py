@@ -4,6 +4,8 @@ Pure logic, no filesystem beyond tmp dirs. Run from the repo root:
     PYTHONPATH=tools python3 -m unittest test_agent_lint -v
 """
 
+import contextlib
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -87,8 +89,12 @@ class LintTree(unittest.TestCase):
         self.assertEqual(al.lint_tree(self.d), [])
 
     def test_missing_dir_is_a_violation_not_a_clean_run(self):
-        rc = al.main(["agent_lint.py", str(self.d / "does-not-exist")])
+        # main() reports to stdout/stderr; capture so the run's own output stays readable.
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = al.main(["agent_lint.py", str(self.d / "does-not-exist")])
         self.assertEqual(rc, 1)
+        self.assertIn("nothing was scanned", err.getvalue())
 
     def test_non_utf8_file_is_reported_not_crashed(self):
         (self.d / "binary.md").write_bytes(b"---\nname: a\ndescription: \xff\xfe\ntools: Read\n---\n")
