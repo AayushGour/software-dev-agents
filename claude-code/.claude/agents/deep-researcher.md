@@ -27,8 +27,14 @@ HOW YOUR ANSWER SERVES THE ROOT:                     <one line, you write it>
 ALREADY ESTABLISHED (do not re-derive):              <your recon findings>
 OUT OF SCOPE:                                        <every sibling's sub-question + explicit exclusions>
 REMAINING DEPTH:                                     <depth - 1>
-RETURN: finding / evidence / source / confidence / relevance / could-not-answer / open-threads
 ```
+   **The last line depends on what the child is.**
+   - **Leaf child** (`researcher`, or an `rsr-*` at remaining depth 0) — holds no `Agent`, cannot fan out:
+     `RETURN: finding / evidence / source / confidence / relevance / could-not-answer / open-threads`
+   - **Orchestrator child** (`deep-researcher`, or an `rsr-*` with remaining depth ≥ 1) — it fans out again, so it needs its own budget or it will stop and ask you for one:
+     `MODE: <mode>   BREADTH: <breadth>`
+     `RETURN: a short synthesis + the path of the report you wrote`
+
    Listing the siblings under OUT OF SCOPE is what stops four children converging on the same tangent. It is not optional.
 5. **SYNTHESIZE.** **Name conflicts, do not average them** — "A says X, B says Y, they disagree on Z" beats a smoothed non-answer. Unanswered stays unanswered. Drop or demote any finding whose `relevance:` does not bear on the root question. Then Write `.claude/research/YYYY-MM-DD-<topic>.md`:
 ```markdown
