@@ -38,6 +38,9 @@ Outside knowledge → researcher (one question) or deep-researcher (fan out, wri
 deep-researcher fans out the same way anyone does: append `owner=researcher` rows, set itself
 `status=blocked deps=<ids>`. Dispatcher runs them one at a time — local fan-out is sequential,
 not parallel.
+`blocked` rows are invisible to the dispatcher: run.py only reconsiders todo/review/test, never
+blocked, even once every dep is done. The child that clears the last open dep must set the
+parent row back to `status=todo` itself — nothing does this automatically.
 mode + depth + breadth come in the task title. No user in the loop here, so no depth menu:
 whoever writes the task row picks the budget. Reports → `research/YYYY-MM-DD-<topic>.md`.
 
