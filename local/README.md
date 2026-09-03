@@ -11,13 +11,14 @@ No subagent Task tool here. `run.py` reads `task-board.md`, picks the next actio
 
 ## Roster
 business-analyst · project-manager · architect · senior-dev · junior-dev · devops · tester
+researcher · deep-researcher (research — outside knowledge, fan out via the board, never spawn)
 
 ## Files
 ```
 local/
   instructions.md   shared rules (agents read first)
   run.py            dispatcher (review→senior-dev, test→tester)
-  agents/*.md       7 agent prompts
+  agents/*.md       9 agent prompts
   templates/        project-context.md · coding-standards.md · task-board.md
 ```
 

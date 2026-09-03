@@ -33,12 +33,20 @@ status: todo | wip | review | test | done | blocked
 ## Delegate = add a sub-task
 No direct calls. To delegate: senior-dev appends a row owner=junior-dev status=todo, sets own task blocked deps=<sub-id>. Dispatcher runs junior next. Junior done → senior unblocks + reviews.
 
+## Research
+Outside knowledge → researcher (one question) or deep-researcher (fan out, writes a report).
+deep-researcher fans out the same way anyone does: append `owner=researcher` rows, set itself
+`status=blocked deps=<ids>`. Dispatcher runs them one at a time — local fan-out is sequential,
+not parallel.
+mode + depth + breadth come in the task title. No user in the loop here, so no depth menu:
+whoever writes the task row picks the budget. Reports → `research/YYYY-MM-DD-<topic>.md`.
+
 ## Handoff = set status
 built → status=test (dispatcher runs tester). test pass → done. fail/reject → status=todo + note, back to owner.
 
 ## Common rules
 - Unsure? clarify or write the assumption in project-context.md. Don't invent.
 - grep before build — reuse, no duplicates. Follow coding-standards.md.
-- Devs write unit tests. run them.
+- Devs write unit tests. run them. Then try to break them: mutate the code under test (flip a condition, shift a boundary, return a constant/empty) and rerun — the test must go red. Still green = worthless test, fix the test. Poke the edges the tests skipped (empty, null, boundary, bad input); what breaks and wasn't caught = new test + fix. Revert every mutation, rerun green. Report what you tried to break.
 - Log 1 line per task. Big decision → append to project-context.md.
 - Never: duplicate code, skip tests, invent requirements, overwrite a log.
