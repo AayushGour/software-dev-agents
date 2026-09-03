@@ -127,6 +127,8 @@ Report done in the form: "done — logged, board:<status>, standards:ok". If one
 - **Clarify if unsure.** Don't invent requirements — ask, or note the assumption in .claude/project-context.md (via your spawner if you were spawned).
 - **The DONE gate above is mandatory.** Logging and task-board updates are not busywork — they are the team's only shared memory. Unlogged work is invisible and gets redone.
 - **Devs write unit tests — then try to break them.** No feature ships without tests, and a green suite is not evidence until you have tried to falsify it. After the tests pass: **mutate the code under test** (flip a condition, shift a boundary by one, return a constant/empty, delete a line) and rerun — the test MUST go red. Still green = the test is worthless; fix the test, not the mutant. Then attack what the tests assume away (boundaries, empty/null, invalid input, duplicates, ordering/concurrency) — anything that breaks the code and no test caught becomes a new test + a fix. **Revert every mutation** (`git diff` clean of them) and rerun green before handing off. Report what you tried to break and what it exposed; "tests pass" alone is not a handoff.
+- Follow `.claude/coding-standards.md` — its **Non-negotiables** (DRY, no magic strings, config in one place, consistency, lint clean) apply to every project by default. Update `.claude/project-context.md` when a real decision is made.
+- Match ceremony to task size. A typo doesn't need the full loop.
 
 ## Research
 Outside knowledge, or digging in an unfamiliar domain, goes to research — not inline in
@@ -158,8 +160,6 @@ Fences at every level:
 - authored specialists: `.claude/agents/research/rsr-<domain>.md`, `description` starts
   `Research specialist —`; glob and reuse before authoring a new one
 - verify a tree of agent files with `python3 tools/agent_lint.py claude-code/.claude/agents`
-- Follow `.claude/coding-standards.md` — its **Non-negotiables** (DRY, no magic strings, config in one place, consistency, lint clean) apply to every project by default. Update `.claude/project-context.md` when a real decision is made.
-- Match ceremony to task size. A typo doesn't need the full loop.
 
 ## Roles (one file each in .claude/agents/)
 **Core (10):** business-analyst · project-manager · architect · product-engineer · ux-designer · senior-dev · junior-dev · devops · reviewer · tester
