@@ -75,6 +75,16 @@ for it, the main thread presents:
 
 Never guess the depth. A research request without a chosen depth is not actionable.
 
+**How a request reaches the main thread.** The main thread presents the menu, but a research need
+rarely originates there — it surfaces three, four levels deep inside whatever a subagent is doing.
+The propagation is: **a spawned agent that needs research returns the request to its own
+spawner rather than guessing a depth**, stating what it needs researched and why. The spawner
+either already has the answer (reuse before research) or itself has no menu access and bubbles the
+request upward the same way — return, don't guess. This repeats until the request reaches the main
+thread, which is the only place in the whole call stack where `AskUserQuestion` actually works.
+The main thread then presents the menu and spawns fresh with the chosen mode/depth/breadth baked
+into the prompt; it does not resume the agent that originated the request mid-stack.
+
 ## The deep-researcher loop
 
 ```
@@ -103,6 +113,21 @@ in:  root question + mode + depth + breadth + any caller fences
               question. Same bar as the architect's team-formation rule (CLAUDE.md).
               remaining depth >= 1 → authored file gets `Agent` + `Write` in tools.
               remaining depth = 0  → authored file is a leaf: no `Agent`, no `Write`.
+
+              Building an orchestrator variant (remaining depth >= 1) means pasting more than
+              LOOP steps 2-5. Those four steps alone (DECOMPOSE/STAFF/SPAWN/SYNTHESIZE) leave the
+              pasted STAFF step's `mode=special` branch pointing at a `## Special mode` section
+              the file never received, and drop `## Fences` entirely — losing the no-build-role
+              rule and the concurrency cap, with nothing downstream to re-state them. Building an
+              orchestrator variant means ALL of: add `Write, Agent` to `tools:`; paste LOOP steps
+              2-5; ALSO paste `## Fences` verbatim; ALSO paste `## Special mode` itself; and
+              REPLACE — not supplement — the leaf template's `## Method`, seven-field `RETURN`,
+              `NEVER:`, and `DONE:` with orchestrator-appropriate text mirroring deep-researcher's
+              own closing `CONSULT:` / `NEVER:` / `DONE:`. An orchestrator's contract with its
+              caller is a synthesis plus a report path; leaving the leaf's seven-field block in
+              place states two incompatible return contracts in one file. Match
+              `claude-code/.claude/researcher-template.md`'s authoring footer, which is the
+              delivered source of truth for this list.
 
 4 SPAWN       author ALL children for the level first, THEN spawn them in ONE message
               (parallel). Authoring-then-immediately-spawning one at a time races the
@@ -135,9 +160,19 @@ HOW YOUR ANSWER SERVES THE ROOT:                     <one line, written by the p
 ALREADY ESTABLISHED (do not re-derive):              <recon findings>
 OUT OF SCOPE:                                        <siblings' sub-questions + explicit exclusions>
 REMAINING DEPTH:                                     <n>
-RETURN:                                              finding / evidence / source / confidence /
-                                                     relevance / could-not-answer / open-threads
 ```
+
+The last line depends on what the child is — a single `RETURN:` requesting the seven fields is
+wrong for an orchestrator child: it has no budget to work with and its contract is a synthesis,
+not seven fields. Two variants, matching the delivered `claude-code/.claude/agents/deep-researcher.md`:
+
+- **Leaf child** (`researcher`, or an `rsr-*` at remaining depth 0) — holds no `Agent`, cannot fan
+  out:
+  `RETURN: finding / evidence / source / confidence / relevance / could-not-answer / open-threads`
+- **Orchestrator child** (`deep-researcher`, or an `rsr-*` with remaining depth ≥ 1) — it fans out
+  again, so it needs its own budget or it will stop and ask you for one:
+  `MODE: <mode>   BREADTH: <breadth>`
+  `RETURN: a short synthesis + the path of the report you wrote`
 
 `OUT OF SCOPE` listing the siblings is what stops four children converging on the same tangent.
 
@@ -275,15 +310,40 @@ These are the load-bearing constraints. Each corrected an earlier assumption in 
   is future work.
 - **Cost.** `special, depth 2, breadth 4` = up to 21 agents, orchestrators on opus. The menu states
   the count before spawning, which is the mitigation.
-- **Hot-reload race.** "A few seconds" is unquantified. Batching authorship per level before spawning
-  is the mitigation; if it still races, fall back to author-level-then-spawn-next-turn.
+- **Hot-reload — measured, not predicted.** Two distinct cases, not one. (1) Editing or adding an
+  agent file **inside an already-existing watched directory** — e.g. authoring `rsr-*` files
+  during a `special`-mode run — hot-loads within seconds; this is the platform's own documented
+  behavior and Task 8's Scenario E is the live test of it, still pending. (2) **Creating an agents
+  directory for the first time in a scope does not hot-load at all** — this was probed directly:
+  `/Users/aayushgour/Desktop/harness/.claude/agents/` was created fresh, a throwaway agent file
+  dropped into it, and a spawn attempted twice, ~90 seconds apart. Both attempts returned `Agent
+  type '<name>' not found`. This is why Task 8's whole scenario matrix is deferred to a fresh
+  session rather than run immediately — case (2) is one of the platform's three documented
+  restart-required exceptions, and no amount of waiting inside the same session clears it. Full
+  detail: `docs/superpowers/plans/2026-09-03-research-agents-test-log.md`.
 - **Fence is advisory.** With the allowlist unavailable, nothing structurally prevents a research
   agent spawning a build role — only the written rule. Detectable in the report's "agents used"
-  section.
-- **deepwiki MCP availability.** The server was observed disconnected during design. Agents listing
-  `mcp__deepwiki__*` must degrade to `web_search`, not fail.
+  section. Unmeasured — Scenario I (Task 8) is the live test of whether it holds under an actual
+  attempt, still pending.
+- **deepwiki MCP availability.** The server was observed disconnected during design, and again
+  during Task 8's setup work. Agents listing `mcp__deepwiki__*` must degrade to `web_search`, not
+  fail.
 - **`local/` does not execute.** `local/run.py:83` raises `NotImplementedError("Wire seam 1 to your
   Hermes runtime")`. The local files are spec-parity, not running code.
+- **Local dispatcher: `blocked` rows are never reconsidered, even once every dep is done.** This is
+  **pre-existing** in `local/run.py` and affects the harness's whole documented delegation
+  primitive, not just research. `next_task()` tests `t["status"] in ACTIONABLE`
+  (`{"todo","review","test"}`) *before* it looks at `deps` — a `blocked` row fails that first test
+  and is skipped outright, so its `deps` are never even read. Confirmed by simulation: a board with
+  parent `status=blocked deps=T2` and child `T2 status=done` yields `next_task() == (None, None)`
+  — nothing is ever picked up. `local/instructions.md:34` already documents the same
+  block-then-wait pattern for ordinary (non-research) delegation, so this bug predates and is
+  broader than the research work — it was not introduced here, only surfaced by it. Our own files
+  now state the workaround explicitly: the child that clears the last open dependency must flip
+  the parent row back to `status=todo` itself; nothing does this automatically
+  (`local/agents/deep-researcher.md`, `local/agents/researcher.md`, `local/instructions.md`).
+  `local/run.py` was deliberately **not** modified — fixing the dispatcher itself is out of this
+  design's scope, and the workaround is enough to keep the documented rows honest.
 
 ## Out of scope / future
 
