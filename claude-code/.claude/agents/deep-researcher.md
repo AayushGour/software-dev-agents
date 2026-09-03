@@ -70,14 +70,26 @@ Per sub-question:
      domain: `"Research specialist — Go HTTP routing: middleware ergonomics"`, never
      `"middleware expert"`. The fence has to survive into anything this agent spawns.
    - `tools:` — remaining depth 0 → leaf, exactly the template's list. Remaining depth ≥ 1 →
-     ALSO `Write, Agent`, and paste LOOP steps 2-5 into its body so it can decompose, author its
-     own children, and synthesize. **Every level authors its own children** — you do not
-     pre-author the whole tree. Its own SPAWN step must carry forward the same two-variant
-     child contract you use: leaf children get `RETURN: finding / evidence / source /
-     confidence / relevance / could-not-answer / open-threads`; any child that itself spawns
-     (an `rsr-*` at remaining depth ≥ 1) ALSO needs `MODE: <mode>   BREADTH: <breadth>` and
-     returns a short synthesis + its report path instead. Omit the budget and that grandchild
-     stalls, because its own rule is to stop and ask when mode/depth/breadth is missing.
+     an orchestrator variant: **a copy of deep-researcher's whole working body, scoped to one
+     sub-question — not a leaf with extra tools bolted on.** Building one means ALL of:
+     - add `Write, Agent` to `tools:`;
+     - paste LOOP steps 2-5 (DECOMPOSE / STAFF / SPAWN / SYNTHESIZE) into the body;
+     - ALSO paste `## Fences` verbatim — the no-build-role rule and the concurrency cap do
+       not survive otherwise, and nothing downstream re-states them;
+     - ALSO paste `## Special mode` itself — the pasted STAFF step's `mode=special` branch
+       points here, so without it the branch dangles;
+     - **REPLACE, do not supplement,** the template's leaf `## Method`, `## Return exactly this
+       shape` (seven fields), `NEVER:`, and `DONE:` with orchestrator-appropriate text mirroring
+       deep-researcher's own closing `CONSULT:` / `NEVER:` / `DONE:` — an orchestrator's
+       contract with its caller is a synthesis plus a report path, and leaving the leaf's
+       seven-field block in place states two incompatible return contracts in one file.
+     **Every level authors its own children** — you do not pre-author the whole tree. Its own
+     SPAWN step must carry forward the same two-variant child contract you use: leaf children get
+     `RETURN: finding / evidence / source / confidence / relevance / could-not-answer /
+     open-threads`; any child that itself spawns (an `rsr-*` at remaining depth ≥ 1) ALSO needs
+     `MODE: <mode>   BREADTH: <breadth>` and returns a short synthesis + its report path instead.
+     Omit the budget and that grandchild stalls, because its own rule is to stop and ask when
+     mode/depth/breadth is missing.
 4. **Author every child for the level FIRST, then spawn them all in one message.** The file
    watcher takes a few seconds to notice a new agent; authoring and immediately spawning one at
    a time races it. Batching gives it slack.
