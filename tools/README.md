@@ -33,6 +33,7 @@ tools/
 Tools read config from env vars (e.g. `SEARXNG_URL`). Set them in `.mcp.json` `env` for Claude Code, and in your shell/dispatcher for local.
 
 ## Included tools
+- `agent_lint.py` — Frontmatter invariants for `.claude/agents/*.md` — explicit `tools:`, unique names, leaf/orchestrator tool sets (`Task` counted as `Agent`), `rsr-` naming, no `Agent(...)` allowlists. A directory that does not exist or cannot be read is itself a violation, so a clean run always means files were actually scanned. Frontmatter only — see the module docstring's `Not enforced` block. `python3 tools/agent_lint.py <agents_dir>`; tests: `PYTHONPATH=tools python3 -m unittest test_agent_lint -v`
 - `web_search/` — SearXNG (`SEARXNG_URL`, default `http://localhost:8081`), **auto-managed in Docker**. Two MCP tools: `ensure_searxng` (health-check + spawn the container) and `web_search` (search only, raises if the backend is down). Call `ensure_searxng` first; a SessionEnd hook stops the container. Needs Docker. See `web_search/README.md`.
 - `code_review_graph/` — the **code brain**: a per-project knowledge graph (code-review-graph) exposed as an MCP server (`mcp__code-review-graph__*`) so agents query structure/impact instead of re-reading files. Auto-installed via `uvx`; a SessionStart hook builds/updates the graph in the background. Needs `uv`. See `code_review_graph/README.md`.
 - `deepwiki/` — docs + Q&A for public GitHub repos. Hosted remote MCP (`mcp.deepwiki.com`); local wrapper needs `pip install mcp`.

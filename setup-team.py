@@ -145,7 +145,9 @@ def main() -> None:
     install_mcp(target, args.force)
 
     print("\nDone. cd into the project and describe the work — Claude Code")
-    print("auto-discovers .claude/agents/*.md and routes to the right agent.")
+    print("auto-discovers .claude/agents/**/*.md (recursive) and routes to the right agent.")
+    print("Research: researcher (one question) | deep-researcher (fan-out + report).")
+    print("Depth menu is main-thread only — see the ## Research block in CLAUDE.md.")
     print("(web-search + code brain both run via uv — install: https://astral.sh/uv)")
     print("(web-search also needs Docker running for the SearXNG backend)")
 

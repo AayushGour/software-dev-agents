@@ -73,3 +73,28 @@ A running log of non-obvious design decisions for this harness (the AI dev-org).
 ## 2026-08 — Enforcement hardening (external review round 2)
 **What:** (1) `board_lint.py` v2 — PreToolUse matcher now includes **Bash**: any write-shaped Bash command touching `task-board.md` is blocked outright, funneling all board changes through the linted Edit/Write path; and `evidence:` refs are now **resolved**, not substring-checked — the file must exist (searched vs `.claude/` and project root) and a `#T<id>` anchor must appear in its content, so `evidence:whatever` no longer passes. (2) New debounced **PostToolUse hook** (`tools/code_review_graph/refresh_graph.py`, 120s debounce, skips .claude//.git//markdown) auto-refreshes the code brain after source edits — the "remember to rebuild" rule is deleted; `build_or_update_graph_tool` stays as manual override. (3) **`bounces:N`** field on the task line: every reviewer/tester REJECT increments it; at `bounces:3` the loop stops and the task escalates to the human — replaces the undefined "repeated test failures" trigger. (4) Doc honesty: unsourced "~82× fewer tokens" cut from the rulebook; README now labels `local/` a design sketch (unwired seams, no hooks, integrity rules unenforced there).
 **Why:** a second external review correctly showed the enforcement layer was thinner than the docs claimed: the evidence gate was a substring check, Bash was an unhooked board-write path available to five agents, reject loops had no bound, and graph freshness relied on agent self-assessment. Known remaining limits, accepted deliberately: hooks can't see subagent identity (dev-ceiling and `deps` serialization stay prose — a Claude Code runtime constraint), and evidence resolution proves the tester log line exists, not that its pasted output is genuine.
+
+## 2026-09 — Research agents: researcher, deep-researcher, and special mode
+**What:** Two roles — `researcher` (leaf: one question, no fan-out, no files) and
+`deep-researcher` (orchestrator: recon → decompose → fan out → synthesize → report to
+`.claude/research/`). Three modes chosen per invocation via a **main-thread depth menu**
+(Quick 1 / Deep 5 / Special 21 / Custom): `deep` fans out with stock generic children
+specialised by prompt; `special` authors tailored `rsr-<domain>.md` specialists under
+`.claude/agents/research/` that persist for reuse — at depth ≥ 1 these are built as
+orchestrator variants, deep-researcher's whole working body copied in (including its
+`## Fences` and `## Special mode` sections), not a leaf with extra tools bolted on, and
+any child that will itself fan out is handed `MODE` and `BREADTH` alongside remaining
+depth or it stalls on its own missing-budget rule. Wired through one `## Research` block
+in `CLAUDE.md` rather than editing ten agent files. `tools/agent_lint.py` enforces the
+frontmatter invariants. Mirrored into `local/` for parity, fanning out via task-board rows.
+
+**Why:** the team had research tools but no research role — every agent researched inline,
+burning its own planning context, with no budget and no artifact. Four platform facts
+shaped the design and each corrected an earlier assumption: subagent nesting is real but
+capped at 3 layers; `Agent(type)` allowlists are **ignored inside a subagent definition**,
+so containment is a prompt rule and the linter covers what it can; an omitted `tools:` key
+inherits every subagent tool, which would silently stop the leaf being a leaf; and
+`AskUserQuestion` is unavailable to subagents, which is why the depth menu must fire in the
+main thread. Rejected: a fixed typed roster (too rigid for arbitrary domains), and having
+`deep-researcher` hand a spawn plan back to the main thread (kills the context isolation
+that makes fan-out worth doing).
