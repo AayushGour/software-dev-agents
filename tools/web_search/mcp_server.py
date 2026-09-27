@@ -12,7 +12,7 @@ Registered in claude-code/.mcp.json. Tools appear to agents as
 
 from mcp.server.fastmcp import FastMCP
 from tool import web_search as _search
-from ensure_searxng import ensure as _ensure
+from ensure_searxng import ensure as _ensure, HEALTHY as _HEALTHY
 
 mcp = FastMCP(
     "web-search",
@@ -39,6 +39,7 @@ def ensure_searxng() -> str:
     Returns a status line:
       up           ready — go ahead and call web_search
       spawned      was down; container started and is healthy — call web_search
+      reloaded     was up on a stale config; refreshed and restarted — healthy, go ahead
       no-docker    Docker CLI not found
       daemon-down  Docker installed but its daemon isn't running
       port-busy    something else holds the port but isn't JSON-capable SearXNG
@@ -58,7 +59,7 @@ def web_search(query: str, num_results: int = 5) -> str:
     status instead of results — then do NOT silently fall back: ask the user before
     using the native (external) WebSearch tool."""
     status = _ensure()
-    if not status.startswith(("up", "spawned")):
+    if not status.startswith(_HEALTHY):
         return (
             f"SearXNG backend unavailable ({status}). Do not silently fall back: "
             "tell the user the self-hosted search can't start and ask whether to "

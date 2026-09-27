@@ -1,6 +1,9 @@
 # SearXNG config for the harness-managed container (mounted at /etc/searxng).
-# ensure_searxng.py copies this to settings.yml on first run, replacing __SECRET_KEY__
-# with a generated secret. settings.yml is gitignored (it holds that secret).
+# ensure_searxng.py renders this to settings.yml, replacing __SECRET_KEY__ with a
+# generated secret and appending a `# template-sha256:` stamp. settings.yml is
+# gitignored (it holds that secret); the stamp is what lets ensure_searxng notice
+# this template changed and re-render + restart the container, so edits here reach
+# existing installs instead of only fresh ones.
 # `use_default_settings: true` overlays these keys onto SearXNG's shipped defaults,
 # so we only specify what the harness needs to change.
 use_default_settings: true
@@ -17,3 +20,100 @@ search:
 
 general:
   debug: false
+
+# --- Engine pool -------------------------------------------------------------
+# 2026-09-06: diagnosed a silent-failure mode where every "general"-category query
+# came back empty ("No results."). SearXNG's shipped defaults enable only 5 engines
+# in the "general" category (brave, duckduckgo, google cse, startpage, wikipedia).
+# Under repeated queries from several concurrent agents in one session, all 5 got
+# rate-limited, CAPTCHA'd, or suspended at once (429/CAPTCHA, suspended_time up to
+# 3600s), so the merged result set was empty until the suspensions expired.
+#
+# 2026-09-27: re-measured. The empty-result mode is gone, but it was replaced by a
+# WORSE one — plausible-looking, wholly off-topic results. Two findings:
+#
+#   1. Only google cse and bing survive a burst. Live during the re-measure:
+#      brave "Suspended: too many requests", duckduckgo "CAPTCHA",
+#      startpage "Suspended: CAPTCHA". So the pool is still effectively 2 wide.
+#
+#   2. bing is not neutral filler, it actively poisons the merge. Isolated per
+#      engine on identical queries (reproduced across runs):
+#        q="swift concurrency actor reentrancy"
+#          google cse → hackingwithswift, hackernoon, lobste.rs      (on topic)
+#          bing       → carwale, marutisuzuki, cardekho, 91wheels    (off topic)
+#        q="sqlite wal mode concurrency limits"
+#          google cse → sqlite.org/wal.html, coddy.tech              (on topic)
+#          bing       → youtube reels, instagram, rekhta.org         (off topic)
+#      bing drops all but one query term and serves geo-localized junk to traffic it
+#      flags as non-browser. It raises no exception and is never suspended, so
+#      SearXNG merges it as valid. As the healthy engines get suspended, bing's share
+#      of the merged list rises — which is exactly the "good for a few searches, then
+#      garbage" symptom. This is bing's anti-scraping behavior, not a SearXNG bug.
+#
+# Fix, two parts:
+#   a) Widen the pool with engines that actually answer from this egress IP. Probed
+#      every disabled general engine on 2026-09-27, then re-ran the survivors over 5
+#      queries each — a single probe is NOT enough to qualify an engine, see the yep
+#      note below. Success rate / mean results / mean latency, enabled below:
+#        duckduckgo web  5/5  n=10  0.9s  (a DIFFERENT endpoint than the `duckduckgo`
+#                                          engine, which is CAPTCHA'd — this is not.
+#                                          Does throw an intermittent KeyError
+#                                          'results' under concurrent load, i.e. a
+#                                          soft-block; it degrades, it doesn't suspend)
+#        yandex          5/5  n=13  0.7s
+#        mwmbl           4/5  n=27  0.6s
+#        seznam          5/5  n=10  1.9s  (slowest enabled engine; still well inside
+#                                          the 6s request_timeout below)
+#      Measured and REJECTED:
+#        yep       0/5  "Suspended: access denied". Answered n=20 on a single first
+#                  probe, then permanently 403'd — confirmed at the socket, its API
+#                  returns a bare HTTP 403 to this IP. SearXNG suspends access-denied
+#                  engines for far longer than a rate limit, so a lucky first probe
+#                  buys nothing. This is why the survivors above were re-run 5x.
+#        mojeek    0/5. Answers HTTP 200 but with zero results.
+#        quark     3/5, "Suspended: CAPTCHA".
+#        naver     5/5 and fast, but returns product landing pages rather than
+#                  articles (q="postgres index bloat detection" → pganalyze.com,
+#                  postgres.ai homepages). Reliable, not useful.
+#      Hard-blocked from this IP (403 / access denied / protocol error / timeout — not
+#      a rate limit, retry does not clear it): qwant, yahoo, presearch, dogpile,
+#      fireball, searchmysite, zapmeta, baidu. Re-probe everything here if the
+#      outbound network/IP changes.
+#      Do NOT enable the plain `google` engine: upstream ships it `inactive: true`
+#      (non-functional), which is why `google cse` exists.
+#
+#   b) Demote bing instead of removing it, so it still backstops the case where every
+#      other engine is suspended, but never outranks a working engine.
+#      weight: 0.05 — from calculate_score() in searx/results.py, a bing-only result at
+#      its own position 1 scores 0.05, which lands below a healthy engine's position-20
+#      result (1/20 = 0.05). Since tool.py returns only the top few, bing is effectively
+#      invisible unless nothing else answered — the fallback behaviour we want.
+#      KNOWN TRADE-OFF: engine weights MULTIPLY across engines that agree on a result
+#      (results.py:23-25), so a URL found by both bing and a healthy engine is demoted
+#      rather than boosted. Accepted: bing's junk is unique to bing (no other engine
+#      returns carwale for a Swift concurrency query), so the demotion lands on the
+#      junk far more often than on genuine agreement.
+#
+# NOTE: google cse is unkeyed and hardcoded upstream to a third party's CX
+# (partner-pub-8993703457585266, blackle.com). It is the strongest engine here and it
+# can be revoked without warning — hence the wider pool above rather than relying on it.
+engines:
+  - name: bing
+    disabled: false
+    weight: 0.05          # last-priority fallback only; see (b) above
+  - name: duckduckgo web
+    disabled: false
+  - name: yandex
+    disabled: false
+  - name: mwmbl
+    disabled: false
+  - name: seznam
+    disabled: false
+
+# Default outgoing.request_timeout (3.0s) is too tight once several engines fan out
+# per query on this connection; multiple engines were failing with a plain "engine
+# timeout" (not rate-limit) at 3s. Give them more room. 6.0s also clears the slowest
+# engine enabled above (seznam, measured 4.0s).
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 12.0

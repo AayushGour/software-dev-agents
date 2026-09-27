@@ -17,13 +17,36 @@ the user before falling back to the native WebSearch tool (external, not the pri
 
 ## Config
 `SEARXNG_URL` — default `http://localhost:8081`. The managed container's config lives in
-`searxng/settings.template.yml` (committed); `searxng/settings.yml` is generated on first
-run with a real `secret_key` and is **gitignored**.
+`searxng/settings.template.yml` (committed); `searxng/settings.yml` is generated with a
+real `secret_key` and is **gitignored**.
+
+`ensure_searxng` re-renders `settings.yml` whenever the template changes and restarts the
+container (status `reloaded`), keeping the existing `secret_key`. So template fixes reach
+existing installs on their next search — not just fresh ones. Detection is a
+`# template-sha256:` stamp appended to the generated file; an unstamped legacy
+`settings.yml` is migrated on the next run.
+
+Throttling and caching (`tool.py`), tunable by env var:
+
+| var | default | what it does |
+|---|---|---|
+| `WEB_SEARCH_MAX_CONCURRENCY` | `2` | cap on simultaneous engine fan-outs |
+| `WEB_SEARCH_MIN_INTERVAL` | `0.5` | minimum seconds between request starts |
+| `WEB_SEARCH_CACHE_TTL` | `900` | seconds to serve a repeated query from memory (`0` disables) |
+
+These exist because SearXNG scrapes the engines from one egress IP: a parallel agent
+fan-out looks like a bot burst, the engines answer 429/CAPTCHA and suspend themselves for
+180–3600s, and the *surviving* engines keep returning plausible-but-wrong results. The
+symptom is quality quietly degrading after a few searches, not an error. State is
+per-process, so it throttles everything sharing one MCP server; separate `cli.py` runs
+each get their own budget. See the engine-pool notes in `searxng/settings.template.yml`
+for the measured per-engine reliability behind the enabled set.
 
 ## Lifecycle
 ```
 first search → ensure_searxng: down → docker run (pulls image 1st time) → up → web_search
 later        → ensure_searxng: up (fast) → web_search
+template edit→ ensure_searxng: reloaded (re-render settings.yml + docker restart)
 session end  → SessionEnd hook → ensure_searxng.py --stop → docker stop
 next session → ensure_searxng: down → docker start (image cached) → up
 ```

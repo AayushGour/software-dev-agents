@@ -12,6 +12,7 @@ CLI (`--stop`). See docs/superpowers/specs/2026-07-28-searxng-autospawn-design.m
 ensure() statuses:
   up           backend reachable and JSON-capable — ready for web_search
   spawned      was down; container started and is now JSON-healthy
+  reloaded     was up on a stale settings.yml; re-rendered it and restarted
   no-docker    docker CLI not found
   daemon-down  docker installed but the daemon isn't running
   port-busy    something holds the port but isn't JSON-capable SearXNG (free it / enable JSON)
@@ -19,10 +20,12 @@ ensure() statuses:
 """
 
 import os
+import re
 import sys
 import json
 import time
 import shutil
+import hashlib
 import secrets
 import subprocess
 import urllib.error
@@ -40,6 +43,12 @@ TEMPLATE = CFG_DIR / "settings.template.yml"
 SETTINGS = CFG_DIR / "settings.yml"
 _PORT = urllib.parse.urlparse(SEARXNG_URL).port or 8081
 _UA = {"User-Agent": "ai-harness/1.0"}
+_STAMP_PREFIX = "# template-sha256: "
+
+# Statuses that mean "the backend is serving" — callers gate on these rather than
+# re-listing the strings, so adding a status can't silently leave a caller reporting a
+# healthy backend as unavailable.
+HEALTHY = ("up", "spawned", "reloaded")
 
 # Claude Code launched from a GUI can hand the MCP server a stripped PATH that omits
 # docker. Fall back to the usual install locations before giving up.
@@ -63,9 +72,27 @@ def _docker_bin():
     return None
 
 
-def _json_ok(timeout: int = 5) -> bool:
-    """True if SEARXNG_URL answers a format=json search — what web_search actually needs."""
-    q = urllib.parse.urlencode({"q": "healthcheck", "format": "json"})
+def _json_ok(timeout: int = 9) -> bool:
+    """True if SEARXNG_URL answers a format=json search — what web_search actually needs.
+
+    Pinned to a single engine on purpose. mcp_server calls ensure() before EVERY
+    web_search, so an unrestricted probe fanned this query out to the whole general
+    pool and doubled the scrape traffic each search put on the engines — a direct
+    contributor to the 429/CAPTCHA suspensions that degrade result quality. Only
+    three things are being checked here (the socket answers, format=json is not 403'd,
+    the body parses as JSON), and one cheap engine proves all three; an empty result
+    set is still a pass. wikipedia is enabled in SearXNG's shipped defaults and is not
+    rate-limited, so it costs the scraped engines nothing.
+
+    2026-09-06: bumped from 5s to 9s. settings.yml raised outgoing.request_timeout to
+    6.0s, so a legitimate response could take over 5s and this probe was timing out on
+    genuinely-healthy-but-slow responses; urllib raised a timeout Exception (caught
+    below, returns False) and ensure() then misdiagnosed the backend as "port-busy" via
+    _listening() succeeding on a fast root-path probe. The single-engine probe above
+    makes that far less likely, but keep the headroom: a container that is still
+    booting is slow to answer anything.
+    """
+    q = urllib.parse.urlencode({"q": "healthcheck", "format": "json", "engines": "wikipedia"})
     req = urllib.request.Request(f"{SEARXNG_URL}/search?{q}", headers=_UA)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -110,12 +137,41 @@ def _container_exists() -> bool:
         return False
 
 
-def _write_settings_if_absent() -> None:
-    """Materialize settings.yml from the template on first run, injecting a real secret."""
-    CFG_DIR.mkdir(parents=True, exist_ok=True)
-    if SETTINGS.exists():
-        return
-    SETTINGS.write_text(TEMPLATE.read_text().replace("__SECRET_KEY__", secrets.token_hex(32)))
+def _sync_settings() -> bool:
+    """Render settings.yml from the template, preserving any secret already generated.
+
+    Returns True if settings.yml was created or rewritten — i.e. a running container is
+    now serving a stale config and needs restarting — and False if it was already
+    current.
+
+    settings.yml is gitignored (it holds the generated secret), so installing or
+    updating the harness only ever ships settings.template.yml. The previous
+    write-if-absent behaviour meant an existing install stayed pinned forever to
+    whichever template it first ran with, and template fixes (engine pool, timeouts)
+    silently never reached it. Stamping the rendered file with the template's digest
+    makes that drift detectable on every ensure().
+
+    Best-effort: on any filesystem error this reports "no change" rather than raising,
+    so a config refresh can never take down an otherwise working backend. A first-run
+    failure still surfaces, as the container then comes up without JSON enabled and
+    ensure() returns "failed:".
+    """
+    try:
+        stamp = f"{_STAMP_PREFIX}{hashlib.sha256(TEMPLATE.read_bytes()).hexdigest()}\n"
+        secret = None
+        if SETTINGS.exists():
+            current = SETTINGS.read_text()
+            if current.endswith(stamp):
+                return False
+            m = re.search(r'secret_key:\s*"([^"]+)"', current)
+            if m and m.group(1) != "__SECRET_KEY__":
+                secret = m.group(1)
+        CFG_DIR.mkdir(parents=True, exist_ok=True)
+        rendered = TEMPLATE.read_text().replace("__SECRET_KEY__", secret or secrets.token_hex(32))
+        SETTINGS.write_text(f"{rendered}\n{stamp}")
+        return True
+    except OSError:
+        return False
 
 
 def _start_container() -> None:
@@ -131,10 +187,27 @@ def _start_container() -> None:
         )
 
 
-def _wait_json(timeout: int = 30) -> bool:
+def _restart_container() -> bool:
+    """Restart the harness container so a re-rendered settings.yml takes effect."""
+    docker = _docker_bin()
+    if not docker or not _container_exists():
+        return False
+    try:
+        return subprocess.run(
+            [docker, "restart", CONTAINER], capture_output=True, timeout=60
+        ).returncode == 0
+    except Exception:
+        return False
+
+
+def _wait_json(timeout: int = 45) -> bool:
+    # Per-attempt timeout matches _json_ok's default (9s, see its docstring) — a
+    # shorter per-attempt timeout here could make every single poll attempt time out
+    # (rather than genuinely fail) whenever a fanned-out engine legitimately takes
+    # close to outgoing.request_timeout, starving _wait_json of a real answer.
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if _json_ok(timeout=3):
+        if _json_ok(timeout=9):
             return True
         time.sleep(1.5)
     return False
@@ -142,8 +215,16 @@ def _wait_json(timeout: int = 30) -> bool:
 
 def ensure() -> str:
     """Guarantee a JSON-capable SearXNG at SEARXNG_URL. See module docstring for statuses."""
+    drifted = _sync_settings()
     if _json_ok():
-        return "up"
+        if not drifted:
+            return "up"
+        # Up, but on the settings.yml we just replaced. Restart so the current engine
+        # pool and timeouts apply. If the restart can't be attempted (no docker, or the
+        # container isn't ours), keep serving the stale config rather than failing.
+        if not _restart_container():
+            return "up"
+        return "reloaded" if _wait_json() else "failed:container did not return after a config reload"
     if _listening():
         return (
             f"port-busy: something on {SEARXNG_URL} answered but is not a JSON-capable "
@@ -154,7 +235,6 @@ def ensure() -> str:
         return "no-docker"
     if not _docker_daemon_up():
         return "daemon-down"
-    _write_settings_if_absent()
     _start_container()
     return "spawned" if _wait_json() else "failed:container did not become JSON-healthy in time"
 
