@@ -13,8 +13,8 @@ import time
 from pathlib import Path
 
 DEBOUNCE_SECONDS = 120
-STAMP = Path(".code-review-graph") / ".last-refresh"
-SKIP_PARTS = {".claude", ".code-review-graph", ".git"}
+STAMP = Path("graphify-out") / ".last-refresh"
+SKIP_PARTS = {".claude", "graphify-out", ".git"}
 
 
 def main() -> None:
