@@ -37,8 +37,6 @@ def parse_selection(raw: str, keys: list[str]) -> list[str]:
             picked.add(keys[int(tok) - 1])
         elif tok in keys:
             picked.add(tok)
-        elif tok in REGISTRY:
-            raise ValueError(f"{REGISTRY[tok].label} isn't supported yet (coming soon)")
         else:
             raise ValueError(f"unknown platform {tok!r}")
     if not picked:
@@ -52,15 +50,12 @@ def _yes(prompt: str, default: bool) -> bool:
     return default if not answer else answer.startswith("y")
 
 
-def _ask_platforms(preselected: list[str]) -> list[str]:
+def _ask_platforms(preselected: list[str], installed: list[str]) -> list[str]:
     print("Platforms:")
     for i, key in enumerate(AVAILABLE, 1):
         p = REGISTRY[key]
-        tags = [t for t, on in (("detected", p.detected()), ("installed", key in preselected)) if on]
+        tags = [t for t, on in (("detected", p.detected()), ("installed", key in installed)) if on]
         print(f"  {i}) {p.label:<16} [{key}]{'  (' + ', '.join(tags) + ')' if tags else ''}")
-    soon = [p.label for p in REGISTRY.values() if not p.available]
-    if soon:
-        print(f"  coming soon: {', '.join(soon)}")
     while True:
         raw = input(f"Install for which? numbers/keys, comma-separated, 'a' = all "
                     f"[{','.join(preselected)}]: ") or ",".join(preselected)
@@ -111,7 +106,7 @@ def _run(argv) -> int:
             return 2
     elif interactive:
         detected = [k for k in AVAILABLE if REGISTRY[k].detected()]
-        platforms = _ask_platforms(previous or detected or DEFAULT_PLATFORMS)
+        platforms = _ask_platforms(previous or detected or DEFAULT_PLATFORMS, previous)
     else:
         platforms = previous or DEFAULT_PLATFORMS
 
@@ -139,6 +134,8 @@ def _run(argv) -> int:
         for key in platforms:
             print(f"\n== {REGISTRY[key].label} ==")
             REGISTRY[key].install(ctx)
+            # anything this platform generated before but not now (e.g. a removed agent)
+            manifest.remove_platform(key, writer.report, keep=ctx.touched.get(key, set()))
         for key in dropped:
             manifest.remove_platform(key, writer.report)
     except KeyboardInterrupt:

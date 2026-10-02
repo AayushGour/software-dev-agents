@@ -191,7 +191,7 @@ class Deselect(_Tmp):
         self.assertTrue((self.target / ".agents/skills" / SKILL / "SKILL.md").exists())
         self.assertTrue((self.target / "AGENTS.md").exists())
         self.assertEqual(self.manifest()["platforms"], ["cursor"])
-        self.assertEqual(self.manifest()["generated"], {})
+        self.assertEqual({e["platform"] for e in self.manifest()["generated"].values()}, {"cursor"})
         self.assertFalse((self.target / ".claude/skills").exists())  # emptied dir pruned
 
     def test_user_text_in_claude_md_survives_deselect(self):
@@ -232,11 +232,9 @@ class CopyFallback(_Tmp):
 
 
 class Cli(_Tmp):
-    def test_unknown_and_coming_soon_platforms_rejected(self):
+    def test_unknown_platform_rejected(self):
         self.assertEqual(self.install("nope"), 2)
         self.assertIn("unknown platform", self.out)
-        self.assertEqual(self.install("codex"), 2)
-        self.assertIn("coming soon", self.out)
         self.assertFalse((self.target / ".claude").exists())
 
     def test_non_interactive_without_target_errors(self):
@@ -251,6 +249,21 @@ class Cli(_Tmp):
              redirect_stdout(io.StringIO()):
             self.assertEqual(cli.main([]), 0)
         self.assertEqual(self.manifest()["platforms"], AVAILABLE)
+
+    def test_menu_says_installed_only_for_platforms_already_in_the_project(self):
+        def menu(argv, answers):
+            with mock.patch.object(cli, "_interactive", return_value=True), \
+                 mock.patch("builtins.input", side_effect=answers), \
+                 redirect_stdout(io.StringIO()) as out:
+                cli.main(argv)
+            return out.getvalue()
+        fresh = menu([str(self.target)], ["claude", "n", "y"])
+        self.assertNotIn("installed", fresh)
+        again = menu([str(self.target)], ["", "n", "n"])
+        claude_line = next(l for l in again.splitlines() if "[claude]" in l)
+        cursor_line = next(l for l in again.splitlines() if "[cursor]" in l)
+        self.assertIn("installed", claude_line)
+        self.assertNotIn("installed", cursor_line)
 
     def test_interactive_decline_writes_nothing(self):
         with mock.patch.object(cli, "_interactive", return_value=True), \
@@ -273,7 +286,7 @@ class Cli(_Tmp):
         self.assertEqual(cli.parse_selection("a", keys), keys)
         self.assertEqual(cli.parse_selection("1", keys), keys[:1])
         self.assertEqual(cli.parse_selection("cursor,claude", keys), ["claude", "cursor"])
-        for bad in ("99", "", "codex"):
+        for bad in ("99", "", "gemini"):
             with self.assertRaises(ValueError):
                 cli.parse_selection(bad, keys)
 

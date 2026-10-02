@@ -25,7 +25,21 @@ python3 setup-team.py <path> --platforms claude,cursor --yes [--force] # scripte
 
 Without a terminal (CI, pipes) it never prompts: platforms default to whatever the project already has (else `claude`), and questions take their default answer — so the original one-argument form still works.
 
-**Platforms:** Claude Code · Cursor · GitHub Copilot (CLI + VS Code). Coming soon: Codex, OpenCode, Antigravity CLI (Gemini CLI's successor), Hermes Agent, Amp, Kiro — scoped in `docs/superpowers/specs/2026-10-02-multi-platform-shared-install-scope.md`.
+**Platforms** (pick any mix; installed CLIs are pre-selected):
+
+| Platform | Rulebook | Skills | Agents | MCP | Harness hooks (DONE gate, code brain) | Verified live |
+|---|---|---|---|---|---|---|
+| Claude Code | `.claude/CLAUDE.md` → `@../AGENTS.md` | links in `.claude/skills` | native | `.mcp.json` | native | ✓ |
+| GitHub Copilot | native | native | native (`.claude/agents`) | native (`.mcp.json`) | native (`.claude/settings.json`) | ✓ |
+| Cursor | native | native | native (`.claude/agents`) | `.cursor/mcp.json` | native (Claude hooks toggle) | — needs `cursor-agent login` |
+| OpenAI Codex | native | native | stubs `.codex/agents/*.toml` | `.codex/config.toml` block | `.codex/hooks.json` via `tools/hook_adapter.py` | ✓ incl. gate blocking |
+| OpenCode | native | native | stubs `.opencode/agents/*.md` | `opencode.json` | plugin `.opencode/plugins/harness-hooks.js` | ✓ incl. gate blocking |
+| Antigravity CLI (Gemini CLI's successor) | native | native | stubs `.agents/agents/*.md` | `.agents/mcp_config.json` | `.agents/hooks.json` (no session events) | — not installed here |
+| Hermes Agent | native (20k-char cap) | by path | via `delegate_task` | snippet for `~/.hermes/config.yaml` | none (user-global only) | partial (context loads) |
+| Amp | native | native | — (roles run inline) | `.amp/settings.json` | none | — needs `amp login` |
+| Kiro | native | `skill://` glob | stubs `.kiro/agents/*.json` (`file://` prompt) | `.kiro/settings/mcp.json` | none | — not installed here |
+
+Agent stubs never copy a role prompt — they point at `.claude/agents/<role>.md` (Codex and OpenCode were checked following the pointer). Generated JSON/TOML is merged key-by-key into any config you already have, and removed again on deselect. Specialists the architect authors are picked up by re-running setup.
 
 **No duplication — in this repo or in your project.** `claude-code/` is the single definition of the team and already has the installed layout; `installer/` (behind `setup-team.py`) copies it once and adds per platform only what that platform can't read natively. Re-runs remember the selection in `.agents/harness.json`; deselecting a platform removes only the files generated for it (anything you edited is kept).
 

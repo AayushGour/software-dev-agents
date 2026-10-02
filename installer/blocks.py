@@ -1,33 +1,45 @@
-"""Harness-managed blocks inside files the user may also own (AGENTS.md, CLAUDE.md).
+"""Harness-managed blocks inside files the user may also own.
 
 Only the text between the markers belongs to the harness; anything above or below it is
-the user's and survives every re-run.
+the user's and survives every re-run. Markdown (AGENTS.md, CLAUDE.md) uses HTML-comment
+markers; TOML (Codex config) uses `#` comments.
 """
 import re
 
-BEGIN = "<!-- harness:begin — managed by setup-team.py; edits inside this block are overwritten -->"
-END = "<!-- harness:end -->"
-_BLOCK_RE = re.compile(r"<!-- harness:begin[^\n]*-->\n.*?<!-- harness:end -->\n?", re.S)
+_NOTE = "managed by setup-team.py; edits inside this block are overwritten"
+STYLES = {
+    "html": (f"<!-- harness:begin — {_NOTE} -->", "<!-- harness:end -->",
+             re.compile(r"<!-- harness:begin[^\n]*-->\n.*?<!-- harness:end -->\n?", re.S)),
+    "hash": (f"# harness:begin — {_NOTE}", "# harness:end",
+             re.compile(r"# harness:begin[^\n]*\n.*?# harness:end\n?", re.S)),
+}
 
 
-def render(content: str) -> str:
-    return f"{BEGIN}\n{content.rstrip()}\n{END}\n"
+def style_for(rel: str) -> str:
+    return "hash" if rel.endswith((".toml", ".yaml", ".yml")) else "html"
 
 
-def has_block(text: str) -> bool:
-    return bool(_BLOCK_RE.search(text))
+def render(content: str, style: str = "html") -> str:
+    begin, end, _ = STYLES[style]
+    return f"{begin}\n{content.rstrip()}\n{end}\n"
 
 
-def replace(text: str, content: str) -> str:
+def has_block(text: str, style: str = "html") -> bool:
+    return bool(STYLES[style][2].search(text))
+
+
+def replace(text: str, content: str, style: str = "html") -> str:
     """Swap the existing block's content; text outside the block is untouched."""
-    return _BLOCK_RE.sub(lambda _: render(content), text, count=1)
+    return STYLES[style][2].sub(lambda _: render(content, style), text, count=1)
 
 
-def append(text: str, content: str) -> str:
+def append(text: str, content: str, style: str = "html") -> str:
     sep = "" if not text else ("\n" if text.endswith("\n") else "\n\n")
-    return f"{text}{sep}{render(content)}"
+    return f"{text}{sep}{render(content, style)}"
 
 
-def strip(text: str) -> str:
+def strip(text: str, style: str = "html") -> str:
     """Text with the block removed (used when a platform is deselected)."""
-    return _BLOCK_RE.sub("", text, count=1).strip("\n") + "\n" if has_block(text) else text
+    if not has_block(text, style):
+        return text
+    return STYLES[style][2].sub("", text, count=1).strip("\n") + "\n"

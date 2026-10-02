@@ -155,5 +155,27 @@ a test keeps the wrapped rulebook under Antigravity's 24 KB per-file cap.
 following skill symlinks. So one copy serves all platforms. Tool names in agent files were kept as
 Claude's (Cursor ignores `tools:`, Copilot maps them) rather than rewritten. Facts and sources:
 `docs/superpowers/specs/2026-10-02-multi-platform-shared-install-scope.md`. Codex, OpenCode,
-Antigravity, Hermes, Amp and Kiro are listed as "coming soon"; Codex waits on a hook adapter so
-the DONE gate can't silently stop enforcing there.
+Antigravity, Hermes, Amp and Kiro followed in the next entry.
+
+## 2026-10 — Hook adapter + generated platforms (Codex, OpenCode, Antigravity, Hermes, Amp, Kiro)
+**What:** `tools/hook_adapter.py` runs the Claude-shaped hooks on other platforms: it turns Codex
+`apply_patch` patch text, Antigravity `toolCall` args and OpenCode plugin args into Claude's
+Write/Edit/MultiEdit/Bash payload, runs the script at the project root, and maps a block to the
+platform's protocol. The installer generates, per platform, only config it can't share: agent
+*stubs* whose body points at `.claude/agents/<role>.md` (Kiro uses its native `file://` prompt),
+MCP config derived from `.mcp.json` (merged key-by-key into the user's own JSON; a managed block in
+Codex's TOML), and hook wiring through the adapter (Codex `hooks.json`, an OpenCode plugin,
+Antigravity's `hooks.json` group). Stubs come from the project's own `.claude/agents`, so re-running
+setup wires up architect-authored specialists and removes stubs for deleted ones. Hermes gets a
+printed `config.yaml` snippet: its MCP and hooks are user-global and are not written.
+**Why:** `board_lint.py` keys on Claude tool names and fails open on anything else, so without the
+adapter the DONE gate would silently stop enforcing on Codex (edits arrive as `apply_patch`).
+Verified live: Codex and OpenCode both blocked an evidence-less `status:done` edit through the
+generated hooks, Codex's spawned `tester` stub answered with its role file's DONE line (pointer
+followed), and Codex/OpenCode load the rulebook once, all 9 skills and the 3 MCP servers (Codex
+only once the project is trusted — a `-c` override doesn't count). Found live: Hermes truncates
+context files at 20,000 chars (head 70% + tail 20%, with a marker telling the model to read the
+full file), so the ~23.3k-char rulebook's middle is reached there by a file read; this Hermes has
+no `skills trust`, so skills are read by path. Not verified live: Cursor and Amp (not logged in),
+Antigravity and Kiro (not installed) — format facts are sourced in the scope doc. Unknown: whether
+Cursor lists agents twice when `.codex/agents` stubs sit beside `.claude/agents`.

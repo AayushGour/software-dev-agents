@@ -1,18 +1,27 @@
 """Platform registry: key → adapter, in menu order.
 
-Cursor and Copilot read every shared asset natively (AGENTS.md, .agents/skills,
-.claude/agents, .claude/settings.json hooks, and for Copilot .mcp.json), so their
-adapters write nothing. See docs/superpowers/specs/2026-10-02-multi-platform-shared-install-scope.md.
+Cursor and Copilot read the shared assets natively (AGENTS.md, .agents/skills,
+.claude/agents, .claude/settings.json hooks; Copilot also .mcp.json), so Cursor only
+adds its MCP file and Copilot adds nothing. See
+docs/superpowers/specs/2026-10-02-multi-platform-shared-install-scope.md.
 """
-from installer.platforms.base import ComingSoon, Platform
+from installer import translate
+from installer.context import Context
+from installer.platforms.base import Platform
 from installer.platforms.claude import ClaudeCode
+from installer.platforms.generated import Amp, Antigravity, Codex, Hermes, Kiro, OpenCode
 
 
 class Cursor(Platform):
     key, label, binaries = "cursor", "Cursor", ("cursor-agent", "cursor")
     next_steps = ("reads AGENTS.md, .agents/skills and .claude/agents natively; Claude hooks "
-                  "load via Settings › 'Include third-party configs' (on by default). MCP "
-                  "servers arrive in a later release (.cursor/mcp.json).")
+                  "load via Settings › 'Include third-party configs' (on by default).")
+
+    def install(self, ctx: Context) -> None:
+        print("cursor:")
+        ctx.merge_json(".cursor/mcp.json", {("mcpServers", n): s
+                                            for n, s in translate.mcp_standard().items()},
+                       self.key)
 
 
 class Copilot(Platform):
@@ -22,15 +31,7 @@ class Copilot(Platform):
 
 
 REGISTRY: dict[str, Platform] = {p.key: p for p in (
-    ClaudeCode(),
-    Cursor(),
-    Copilot(),
-    ComingSoon("codex", "OpenAI Codex", "codex"),
-    ComingSoon("opencode", "OpenCode", "opencode"),
-    ComingSoon("antigravity", "Antigravity CLI", "agy"),
-    ComingSoon("hermes", "Hermes Agent", "hermes"),
-    ComingSoon("amp", "Amp", "amp"),
-    ComingSoon("kiro", "Kiro", "kiro-cli"),
+    ClaudeCode(), Cursor(), Copilot(), Codex(), OpenCode(), Antigravity(), Hermes(), Amp(), Kiro(),
 )}
 
-AVAILABLE = [k for k, p in REGISTRY.items() if p.available]
+AVAILABLE = list(REGISTRY)

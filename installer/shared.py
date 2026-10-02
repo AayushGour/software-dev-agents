@@ -21,7 +21,7 @@ def migrate_legacy_skills(ctx: Context) -> None:
         old = ctx.target / ".claude" / "skills" / name
         new = ctx.target / ".agents" / "skills" / name
         rel = f".claude/skills/{name}"
-        if not old.is_dir() or links.is_link(old) or rel in ctx.manifest.data["generated"]:
+        if not old.is_dir() or links.is_link(old) or ctx.manifest.get(rel):
             continue
         if new.exists():
             ctx.writer.report(rel, "keep (also in .agents/skills — merge by hand)")
