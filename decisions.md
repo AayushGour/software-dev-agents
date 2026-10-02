@@ -114,3 +114,46 @@ torch/embeddings download), and its MCP server starts before the graph exists an
 (`query_graph` is keyword/BFS), the risk-scored `detect_changes` (reviewer uses `git diff` +
 `affected` instead), and the MCP-side "build now" tool (agents with Bash run `graphify update .`).
 
+
+## 2026-10 — One canonical team source; interactive multi-platform installer
+**What:** `claude-code/` is now the single source of truth for the team. `setup-team.py` is a
+thin entry point to `installer/`: `source.py` loads the canonical agents, rulebook, skills,
+working docs, hooks and MCP servers (frontmatter parsed by `tools/agent_lint.py`, so there is
+one parser); `platforms/<key>.py` adapters translate it at install time; `cli.py` is
+interactive in a terminal (project folder, platform multi-select with detection, force,
+confirm) and fully flag-driven otherwise (`--platforms`, `--force`, `--yes`). The Claude
+adapter's output is byte-identical to the old script's. `local/agents/`, `local/templates/`
+and `local/instructions.md` are deleted: `local/run.py` loads the canonical agent bodies and
+rulebook and parses the canonical board format; `local/runtime.md` holds only the
+runtime differences (hermes_tools substitutions, board-row delegation, no hooks).
+**Why:** the user is adding Cursor, Gemini CLI, Codex, OpenCode, Hermes Agent and more.
+Hand-kept per-platform copies had already drifted once (`local/` had 9 of 12 roles, a
+different board format, and older prompts), so every platform must be generated from one
+definition. Claude Code's format was kept as the canonical one because it is the richest
+(tools, model, skills, hooks) and keeps in-repo dogfooding working with no migration.
+Accepted cost: the local runtime loses its hand-compressed short prompts for small models.
+Writing shared content once *inside the installed project* (one rulebook, one skills dir
+for all selected platforms) is scoped separately before any config changes.
+
+## 2026-10 — Shared install: AGENTS.md rulebook, .agents/skills, write-once in the project
+**What:** the rulebook is `claude-code/AGENTS.md` (was `CLAUDE.md`); `claude-code/.claude/CLAUDE.md`
+is a one-line `@../AGENTS.md` import — in `.claude/`, not the root, because a real Copilot CLI
+run showed it reads a root `CLAUDE.md` *and* `AGENTS.md`, loading the rulebook twice (+5.9k
+input tokens); with the stub in `.claude/` both Copilot and Claude Code load it once, and
+Claude Code still loads a user's own root `CLAUDE.md` alongside. Skills moved from `claude-code/.claude/skills/` to
+`claude-code/.agents/skills/`, and every agent/rulebook path now reads them there. The installer
+writes shared content once (`AGENTS.md`, `.agents/skills`, `.claude/agents`, hooks, `.mcp.json`,
+working docs) and each platform adds only what it can't read natively: Claude Code gets the
+`.claude/CLAUDE.md` stub plus per-skill links in `.claude/skills/` (symlink → junction → copy); Cursor and
+Copilot get nothing extra. `AGENTS.md`/`CLAUDE.md` content lives in a `harness:begin/end` block so
+user text survives. `.agents/harness.json` records the platforms and every generated item, so a
+deselected platform is cleaned up without deleting anything the user changed. `--force` migrates
+pre-AGENTS.md installs. A "Platform notes" section maps Claude tool names for other runtimes;
+a test keeps the wrapped rulebook under Antigravity's 24 KB per-file cap.
+**Why:** `AGENTS.md` is read natively by every target except Claude Code, which documents the
+`@AGENTS.md` import; `.agents/skills` is read by every target except Claude Code, which documents
+following skill symlinks. So one copy serves all platforms. Tool names in agent files were kept as
+Claude's (Cursor ignores `tools:`, Copilot maps them) rather than rewritten. Facts and sources:
+`docs/superpowers/specs/2026-10-02-multi-platform-shared-install-scope.md`. Codex, OpenCode,
+Antigravity, Hermes, Amp and Kiro are listed as "coming soon"; Codex waits on a hook adapter so
+the DONE gate can't silently stop enforcing there.

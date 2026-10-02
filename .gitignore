@@ -3,3 +3,4 @@ __pycache__/
 .claude/logs/
 tools/web_search/searxng/settings.yml
 graphify-out/
+.claude/agents/
