@@ -1,6 +1,6 @@
 # Task board — <project>    size:<S|M|L>   (PM sets size; architect may bump)
 
-Owner: architect creates/assigns. **Single-writer rule:** a spawned worker never edits this file — it returns status to its spawner, who writes it here (CLAUDE.md integrity rule 1). `done` is authorized by a **tester** PASS + evidence and recorded by the board writer as `status:done  evidence:<ref>` (rule 2); the board-lint hook blocks evidence-less done lines.
+Owner: architect creates/assigns. **Single-writer rule:** a spawned worker never edits this file — it returns status to its spawner, who writes it here (AGENTS.md integrity rule 1). `done` is authorized by a **tester** PASS + evidence and recorded by the board writer as `status:done  evidence:<ref>` (rule 2); the board-lint hook blocks evidence-less done lines.
 
 Format:
 `- [ ] T<id> [owner] <title>  prio:<P0|P1|P2|P3>  status:<todo|wip|review|test|done|blocked>  deps:<ids|->`

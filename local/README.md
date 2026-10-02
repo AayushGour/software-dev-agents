@@ -1,30 +1,31 @@
 # Local org — llama.cpp + Hermes
 
-Same 7-role, 2-mode dev team as `claude-code/`, tuned for a small local model driven by a Hermes tool-calling agent. Prompts are shorter and more literal.
+The same team as `claude-code/`, driven by a small local model through a Hermes
+tool-calling agent. **No copies of its own:** agents, rulebook and working-doc templates
+all come from the canonical `claude-code/` tree via `installer/source.py`. Only what is
+genuinely different about this runtime lives here.
 
 ## How it runs
-No subagent Task tool here. `run.py` reads `task-board.md`, picks the next actionable task, loads that agent's prompt + `instructions.md` + project context, runs the Hermes agent with `hermes_tools`. Agents coordinate through files. Wire the two seams in `run.py` to your llama.cpp/Hermes setup, then: `python run.py <project_dir>`.
+No subagent Task tool here. `run.py` reads `.claude/task-board.md`, picks the next
+actionable task, and builds the system prompt from the canonical agent body + the
+canonical rulebook (`claude-code/AGENTS.md`) + `runtime.md` (tool substitutions,
+board-row delegation, no hooks). It runs the Hermes agent with `hermes_tools`. Agents
+coordinate through files. Install the working docs with `setup-team.py` (they land in
+`<project>/.claude/`), wire the two seams in `run.py` to your llama.cpp/Hermes setup,
+then from the harness root: `python3 -m local.run <project_dir>`.
 
-## Two modes
-- **Plan mode**: `business-analyst` (requirements + clarify) → `architect` (design, standards, split into tasks). No code.
-- **Dev mode**: `architect` delegates → `senior-dev` / `junior-dev` / `devops` build → `tester` validates → done. `project-manager` tracks.
-
-## Roster
-business-analyst · project-manager · architect · senior-dev · junior-dev · devops · tester
-researcher · deep-researcher (research — outside knowledge, fan out via the board, never spawn)
+Dispatch: `todo` → the task owner, `review` → reviewer, `test` → tester.
 
 ## Files
 ```
 local/
-  instructions.md   shared rules (agents read first)
-  run.py            dispatcher (review→senior-dev, test→tester)
-  agents/*.md       9 agent prompts
-  templates/        project-context.md · coding-standards.md · task-board.md
+  runtime.md        what differs from the rulebook on this runtime
+  run.py            dispatcher
+  hermes_agent.py   llama.cpp + Hermes tool-calling loop
+  hermes_tools.py   filesystem + shell tools, sandboxed to the project
+  test_run.py       python3 -m unittest local.test_run
 ```
 
-## Delegation + handoff (via files)
-Delegate = senior-dev adds a `owner=junior-dev` sub-task row, blocks its own on it.
-Handoff = set task `status`: built→`test`, pass→`done`, reject→`todo`+note.
-
 ## Tools
-`tools/registry.py` gives agents `web_search` (SearXNG) + `deepwiki_ask` (public-repo docs). `run.py` loads them next to `hermes_tools`. deepwiki needs `pip install mcp`.
+`tools/registry.py` gives agents `web_search` (SearXNG) + `deepwiki_ask` (public-repo
+docs). `run.py` loads them next to `hermes_tools`. deepwiki needs `pip install mcp`.

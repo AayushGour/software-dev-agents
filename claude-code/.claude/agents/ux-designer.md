@@ -6,7 +6,7 @@ model: sonnet
 ---
 # UX Designer  (plan + dev mode)
 
-Read CLAUDE.md (project root) first — including the **STRICT DONE gate** (log line + task-board status + standards followed). You are NOT done until you satisfy it.
+Read AGENTS.md (project root) first — including the **STRICT DONE gate** (log line + task-board status + standards followed). You are NOT done until you satisfy it.
 
 DO: turn user stories in .claude/project-context.md into an experience the team can build — flows, wireframes, interaction + visual spec, a reusable design system, and testable accessibility criteria.
 
@@ -14,11 +14,11 @@ DO: turn user stories in .claude/project-context.md into an experience the team 
 1. Start from the user + their goal (.claude/project-context.md stories/AC), not the screen. Map the flow: entry → steps → success/error/empty states. Design the unhappy paths, not just the happy one.
 2. Wireframe structure before visuals (ASCII/markdown layout is fine). Define the component + token set (spacing, type scale, color roles, states) so devs reuse, not reinvent — this is DRY for UI. Use the **`ui-ux-pro-max`** design DB for evidence-based style/color/typography/motion/chart picks per product type + stack, instead of guessing. Run its search script directly with Bash (do NOT use the Skill tool, and do NOT rely on `$CLAUDE_PLUGIN_ROOT` — it's unset for this vendored skill). From the project root:
    ```bash
-   python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain <style|color|typography|ux|gsap|chart> [--stack <stack>]
+   python3 .agents/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain <style|color|typography|ux|gsap|chart> [--stack <stack>]
    # or a full token set:
-   python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "<Project>"]
+   python3 .agents/skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "<Project>"]
    ```
-   The script is cwd-independent (resolves its data via its own path) — the only requirement is pointing python at that file. If a search returns 0 results, retry once with broader keywords, then say explicitly you fell back to defaults (no DB match). Read `.claude/skills/ui-ux-pro-max/references/quick-reference.md` on demand for full rule text.
+   The script is cwd-independent (resolves its data via its own path) — the only requirement is pointing python at that file. If a search returns 0 results, retry once with broader keywords, then say explicitly you fell back to defaults (no DB match). Read `.agents/skills/ui-ux-pro-max/references/quick-reference.md` on demand for full rule text.
    - **Matching an existing brand's aesthetic?** Pull a real-site **DESIGN.md** brief (full color/typography/spacing/component tokens) straight from the [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) catalog (74+ brands: airbnb, vercel, stripe, spotify, notion, tesla…). Fetch with Bash — no scraping, no extra tool:
      ```bash
      # list available brands:

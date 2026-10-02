@@ -138,7 +138,7 @@ ul.tight b{color:var(--text);font-weight:600}
 
 <text class="hdr" x="28" y="130">LAYER 1 — ORCHESTRATOR (main thread)</text>
 <rect class="lane" x="14" y="138" width="1052" height="104" rx="10"/>
-<g class="build"><rect class="n" x="28" y="150" width="250" height="76" rx="8"/><text class="t" x="46" y="172">Main Claude Code thread</text><text class="s" x="46" y="190">auto-loads root CLAUDE.md</text><text class="s" x="46" y="208">routes · spawns · integrates · holds the pen</text></g>
+<g class="build"><rect class="n" x="28" y="150" width="250" height="76" rx="8"/><text class="t" x="46" y="172">Main Claude Code thread</text><text class="s" x="46" y="190">loads root AGENTS.md</text><text class="s" x="46" y="208">routes · spawns · integrates · holds the pen</text></g>
 <g><rect class="n" x="300" y="150" width="228" height="76" rx="8"/><text class="t" x="318" y="172">Task tool = delegation</text><text class="s" x="318" y="190">id · one objective · exact files</text><text class="s" x="318" y="208">constraints · expected return format</text></g>
 <g><rect class="n" x="550" y="150" width="228" height="76" rx="8"/><text class="t" x="568" y="172">Carry findings downward</text><text class="s" x="568" y="190">verified paths + signatures,</text><text class="s" x="568" y="208">not a restated goal to re-derive</text></g>
 <g class="gate"><rect class="n" x="800" y="150" width="252" height="76" rx="8"/><text class="t" x="818" y="172">Trivial exception</text><text class="s" x="818" y="190">typo-class fix done inline —</text><text class="s" x="818" y="208">still a board line + pasted evidence</text></g>
@@ -194,20 +194,20 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="mono" x="708" y="578">web-search → uv · local SearXNG :8081</text>
   <text class="mono" x="708" y="598">deepwiki → https remote · repo docs + Q&amp;A</text>
   <text class="s" x="708" y="622">per-agent allowlists live in each agent frontmatter</text>
-  <text class="s" x="708" y="644">+ 9 skills in .claude/skills/ (progressive disclosure)</text></g>
+  <text class="s" x="708" y="644">+ 9 skills in .agents/skills/ (progressive disclosure)</text></g>
 </svg></div>
 <div class="cap">fig 1 — layers: human → orchestrator → agents → substrate. Only the substrate layer executes code.</div>
 </section>
 
 <section id="install">
-<h2><span class="num">02</span> Install — <code>setup-team.py &lt;project&gt;</code></h2>
-<p class="note">One stdlib-only Python script copies the team into any project. <code>claude-code/.claude/</code> already mirrors the installed layout, so it is a straight copy with three special rules: seed-once working docs, marker-checked <code>CLAUDE.md</code>, and hook/MCP paths rewritten to absolute.</p>
+<h2><span class="num">02</span> Install — <code>setup-team.py</code> (interactive, multi-platform)</h2>
+<p class="note">One stdlib-only Python script installs the team into any project for the platforms you pick (Claude Code, Cursor, Copilot, Codex, OpenCode, Antigravity, Hermes, Amp, Kiro). <code>claude-code/</code> already has the installed layout, so shared content is copied once and each platform adds only what it can't read natively. Special rules: seed-once working docs, harness-managed blocks in <code>AGENTS.md</code>/<code>CLAUDE.md</code>, hook/MCP paths rewritten to absolute, and a manifest so deselected platforms are cleaned up.</p>
 <div class="fig"><svg class="d" viewBox="0 0 1080 430" role="img" aria-label="Install flow from harness repo into a target project">
 <text class="hdr" x="28" y="26">SOURCE — harness/</text>
 <g><rect class="n" x="20" y="36" width="286" height="300" rx="10"/>
   <text class="mono" x="38" y="62">claude-code/.claude/agents/*.md</text><text class="s" x="38" y="76">10 role prompts (frontmatter: tools, model)</text>
-  <text class="mono" x="38" y="102">claude-code/CLAUDE.md</text><text class="s" x="38" y="116">shared rulebook — marker line on top</text>
-  <text class="mono" x="38" y="142">claude-code/.claude/skills/*</text><text class="s" x="38" y="156">9 skills, each with SOURCE.md + license</text>
+  <text class="mono" x="38" y="102">claude-code/AGENTS.md</text><text class="s" x="38" y="116">shared rulebook (+ .claude/CLAUDE.md stub)</text>
+  <text class="mono" x="38" y="142">claude-code/.agents/skills/*</text><text class="s" x="38" y="156">9 skills, each with SOURCE.md + license</text>
   <text class="mono" x="38" y="182">claude-code/.claude/settings.json</text><text class="s" x="38" y="196">hook wiring (relative paths)</text>
   <text class="mono" x="38" y="222">claude-code/.mcp.json</text><text class="s" x="38" y="236">3 MCP servers</text>
   <text class="mono" x="38" y="262">.claude/*.md templates</text><text class="s" x="38" y="276">context · standards · board · design</text>
@@ -224,11 +224,11 @@ ul.tight b{color:var(--text);font-weight:600}
 
 <text class="hdr" x="608" y="26">TARGET — your-project/</text>
 <g><rect class="n" x="600" y="36" width="460" height="300" rx="10"/>
-  <text class="mono" x="618" y="62">CLAUDE.md</text><text class="s" x="760" y="62">auto-loaded rulebook (root — required)</text>
+  <text class="mono" x="618" y="62">AGENTS.md</text><text class="s" x="760" y="62">rulebook, every platform (root)</text>
   <text class="mono" x="618" y="84">.mcp.json</text><text class="s" x="760" y="84">only Claude Code reads it from root</text>
   <text class="mono" x="618" y="110">.claude/agents/*.md</text><text class="s" x="760" y="110">the roster (+ specialists later)</text>
   <text class="mono" x="618" y="132">.claude/agent-template.md</text><text class="s" x="760" y="132">skeleton for new specialists</text>
-  <text class="mono" x="618" y="154">.claude/skills/&lt;name&gt;/SKILL.md</text><text class="s" x="760" y="154">read only when triggered</text>
+  <text class="mono" x="618" y="154">.agents/skills/&lt;name&gt;/SKILL.md</text><text class="s" x="760" y="154">read only when triggered</text>
   <text class="mono" x="618" y="176">.claude/settings.json</text><text class="s" x="760" y="176">hooks, paths made absolute</text>
   <text class="mono" x="618" y="202">.claude/project-context.md</text><text class="s" x="760" y="202">SEED-ONCE — yours forever</text>
   <text class="mono" x="618" y="224">.claude/coding-standards.md</text><text class="s" x="760" y="224">SEED-ONCE</text>
@@ -240,10 +240,10 @@ ul.tight b{color:var(--text);font-weight:600}
 <path class="e" d="M306,186 L334,186"/>
 <path class="e" d="M568,186 L596,186"/>
 <g class="gate"><rect class="n" x="338" y="290" width="230" height="76" rx="10"/>
-  <text class="t" x="356" y="312">CLAUDE.md safety</text>
-  <text class="s" x="356" y="330">--force upgrades it only if the</text>
-  <text class="s" x="356" y="346">existing file starts with the harness</text>
-  <text class="s" x="356" y="360">marker. A personal CLAUDE.md is kept.</text></g>
+  <text class="t" x="356" y="312">Rulebook safety</text>
+  <text class="s" x="356" y="330">Only the harness:begin/end block</text>
+  <text class="s" x="356" y="346">is ever rewritten; your own text</text>
+  <text class="s" x="356" y="360">around it in AGENTS.md is kept.</text></g>
 <path class="e thin" d="M453,290 L453,266"/>
 <text class="elabel" x="352" y="396">re-runnable: default is non-destructive; --force upgrades the team without losing project state</text>
 </svg></div>
@@ -273,7 +273,7 @@ ul.tight b{color:var(--text);font-weight:600}
 
 <g class="build"><rect class="n" x="544" y="80" width="228" height="112" rx="9"/>
   <text class="t" x="562" y="102">Context load</text>
-  <text class="s" x="562" y="122">root CLAUDE.md → main thread</text>
+  <text class="s" x="562" y="122">root AGENTS.md → main thread</text>
   <text class="s" x="562" y="140">.claude/agents/*.md discovered</text>
   <text class="s" x="562" y="156">skills indexed by description only</text>
   <text class="s" x="562" y="172">(~100 tokens each until triggered)</text></g>
@@ -442,7 +442,7 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="t" x="626" y="112">architect authors a specialist</text>
   <text class="mono" x="626" y="134">cp .claude/agent-template.md .claude/agents/&lt;name&gt;.md</text>
   <text class="s" x="626" y="154">frontmatter: name · description (routing line) · minimal tools · model</text>
-  <text class="s" x="626" y="172">body: "Read CLAUDE.md first…" · DO · LOOP · CONSULT · NEVER · DONE</text>
+  <text class="s" x="626" y="172">body: "Read AGENTS.md first…" · DO · LOOP · CONSULT · NEVER · DONE</text>
   <text class="s" x="626" y="190">records why in project-context.md ## Team; PM adds it to the roster</text>
   <text class="s" x="626" y="212">Claude Code hot-loads it in seconds — delegatable the same session</text>
   <text class="s" x="626" y="232">when its work is over, stop delegating to it</text></g>
@@ -768,7 +768,7 @@ ul.tight b{color:var(--text);font-weight:600}
 
 <section id="skills">
 <h2><span class="num">14</span> Skills — expertise loaded only when a trigger fires</h2>
-<p class="note">Progressive disclosure: each skill costs ~100 tokens (its description) until something triggers it, at which point the agent Reads <code>.claude/skills/&lt;name&gt;/SKILL.md</code> in full. Vendored skills carry a <code>SOURCE.md</code> with origin, commit and license, and were security-audited before vendoring.</p>
+<p class="note">Progressive disclosure: each skill costs ~100 tokens (its description) until something triggers it, at which point the agent Reads <code>.agents/skills/&lt;name&gt;/SKILL.md</code> in full. Vendored skills carry a <code>SOURCE.md</code> with origin, commit and license, and were security-audited before vendoring.</p>
 <table>
 <thead><tr><th>Skill</th><th>Primary user</th><th>Trigger</th></tr></thead>
 <tbody>
@@ -853,7 +853,7 @@ ul.tight b{color:var(--text);font-weight:600}
 <h3>Design principles behind the short prompts</h3>
 <ul class="tight">
 <li><b>Coordination tax is what kills agent orgs</b> — few agents, sharp prompts, direct action.</li>
-<li><b>Shared rules live in one root CLAUDE.md</b>, not repeated in ten agent files.</li>
+<li><b>Shared rules live in one root AGENTS.md</b>, not repeated in ten agent files.</li>
 <li><b>Memory = plain files</b>; "analyze the codebase" = graph query, then grep/glob/read.</li>
 <li><b>One log line per task</b>, not fifteen fields per action.</li>
 <li><b>Ceremony matches size</b> — neither review nor test ceremony runs on a typo, but evidence still does.</li>
@@ -920,12 +920,12 @@ ul.tight b{color:var(--text);font-weight:600}
 <section id="end">
 <h2><span class="num">19</span> End-to-end, in one paragraph</h2>
 <p class="note" style="max-width:100ch">
-<code>python3 setup-team.py &lt;project&gt;</code> copies ten prompts, one rulebook, nine skills, the hook wiring and <code>.mcp.json</code> into your project without touching your data. You start a session there: the code graph builds, three MCP servers spawn, <code>CLAUDE.md</code> loads into the main thread, and the board-lint hook arms. You describe work. <b>project-manager</b> logs it, sets priority and size, and routes it — unclear to <b>business-analyst</b>, small to <b>senior-dev</b>, complex to <b>architect</b>. In plan mode the BA writes <code>project-context.md</code>, the architect designs, writes <code>coding-standards.md</code>, runs the roster self-review (adding a specialist only for a real ongoing gap), and splits the work into owned task lines. In dev mode the architect delegates; senior-dev queries the code brain, builds test-first, farms exact-spec sub-tasks to junior-devs on their own branches and integrates their diffs as their own code; <b>reviewer</b> independently reviews design, complexity, tests, standards and security and can reject; <b>tester</b> validates against acceptance criteria, pastes real command output, and can reject. Only a tester PASS authorizes <code>done</code>, only the pen-holder writes it, and the hook physically blocks the write if the <code>evidence:</code> ref is missing. Everything anyone learned is in five markdown files and one log per agent — so the next session, or the next agent, starts by reading rather than guessing.
+<code>python3 setup-team.py</code> asks which platforms, then copies ten prompts, one rulebook, nine skills, the hook wiring and <code>.mcp.json</code> into your project without touching your data. You start a session there: the code graph builds, three MCP servers spawn, <code>CLAUDE.md</code> loads into the main thread, and the board-lint hook arms. You describe work. <b>project-manager</b> logs it, sets priority and size, and routes it — unclear to <b>business-analyst</b>, small to <b>senior-dev</b>, complex to <b>architect</b>. In plan mode the BA writes <code>project-context.md</code>, the architect designs, writes <code>coding-standards.md</code>, runs the roster self-review (adding a specialist only for a real ongoing gap), and splits the work into owned task lines. In dev mode the architect delegates; senior-dev queries the code brain, builds test-first, farms exact-spec sub-tasks to junior-devs on their own branches and integrates their diffs as their own code; <b>reviewer</b> independently reviews design, complexity, tests, standards and security and can reject; <b>tester</b> validates against acceptance criteria, pastes real command output, and can reject. Only a tester PASS authorizes <code>done</code>, only the pen-holder writes it, and the hook physically blocks the write if the <code>evidence:</code> ref is missing. Everything anyone learned is in five markdown files and one log per agent — so the next session, or the next agent, starts by reading rather than guessing.
 </p>
 </section>
 
 <footer style="border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:12px;font-family:var(--mono)">
-generated from this repo: README.md · claude-code/CLAUDE.md · .claude/agents/*.md · .claude/settings.json · .mcp.json · tools/board_lint.py · tools/registry.py · local/run.py · setup-team.py
+generated from this repo: README.md · claude-code/AGENTS.md · .claude/agents/*.md · .claude/settings.json · .mcp.json · tools/board_lint.py · tools/registry.py · local/run.py · setup-team.py
 </footer>
 </main>
 </div>
