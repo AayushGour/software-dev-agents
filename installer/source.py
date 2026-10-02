@@ -7,6 +7,10 @@ layout. Platform adapters read it through this module and add only what their pl
 can't read natively; no per-platform copy is ever committed.
 """
 import json
+import os
+import re
+import shlex
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,6 +58,30 @@ def absolutize(text: str) -> str:
     """Rewrite the in-repo `../tools/` form (resolves from claude-code/ when dogfooding)
     to the harness's absolute tools dir, so deployed projects resolve it anywhere."""
     return text.replace("../tools/", f"{TOOLS_DIR.as_posix()}/")
+
+
+def shell_quote(arg: str) -> str:
+    """Quote one argument for the platform's shell — only when it needs it."""
+    return subprocess.list2cmdline([arg]) if os.name == "nt" else shlex.quote(arg)
+
+
+def absolutize_command(command: str) -> str:
+    """Like absolutize, for a shell command line: the absolute path is quoted, so a
+    harness checked out under a path with spaces still runs (unquoted, the shell splits
+    it and the PreToolUse hook exits 2 — which blocks every edit)."""
+    return re.sub(r"\.\./tools/(\S+)",
+                  lambda m: shell_quote(f"{TOOLS_DIR.as_posix()}/{m.group(1)}"), command)
+
+
+def hook_settings_text() -> str:
+    """.claude/settings.json with every hook command made absolute and shell-safe."""
+    settings = json.loads((DOTCLAUDE / "settings.json").read_text())
+    for groups in settings.get("hooks", {}).values():
+        for group in groups:
+            for hook in group.get("hooks", []):
+                if "command" in hook:
+                    hook["command"] = absolutize_command(hook["command"])
+    return json.dumps(settings, indent=2) + "\n"
 
 
 def _split(text: str) -> str:

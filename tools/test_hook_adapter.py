@@ -5,6 +5,7 @@ Run from the repo root:
     PYTHONPATH=tools python3 -m unittest test_hook_adapter -v
 """
 import json
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -38,8 +39,9 @@ class _Project(unittest.TestCase):
         self._tmp.cleanup()
 
     def run_adapter(self, platform, event, payload, command=BOARD_LINT, cwd=None):
+        # a platform's shell splits the hook command into argv before the adapter runs
         return subprocess.run(
-            [sys.executable, str(ADAPTER), platform, event, "--", command],
+            [sys.executable, str(ADAPTER), platform, event, "--", *shlex.split(command)],
             input=json.dumps(payload), capture_output=True, text=True,
             cwd=cwd or self.root / "src/deep")
 
@@ -139,6 +141,11 @@ class Robustness(_Project):
         for payload in ({"tool_name": "WebFetch", "tool_input": {}}, {"toolCall": None}, []):
             r = self.run_adapter("codex", "PreToolUse", payload, ECHO)
             self.assertEqual((r.returncode, r.stdout), (0, ""), payload)
+
+    def test_hook_with_no_command_is_a_no_op(self):
+        r = subprocess.run([sys.executable, str(ADAPTER), "codex", "PreToolUse", "--"],
+                           input="{}", capture_output=True, text=True, cwd=self.root)
+        self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_session_events_run_at_project_root(self):
         r = self.run_adapter("codex", "SessionStart",

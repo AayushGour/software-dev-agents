@@ -218,3 +218,76 @@ class NoDuplication(_Tmp):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReviewRegressions(_Tmp):
+    """One test per finding from the PR #4 review."""
+
+    def test_harness_path_with_space_still_gates_correctly(self):
+        spaced = self.target / "sp ace" / "tools"
+        shutil.copytree(source.TOOLS_DIR, spaced, ignore=shutil.ignore_patterns("__pycache__"))
+        project = self.target / "proj"
+        (project / ".claude/logs").mkdir(parents=True)
+        (project / ".claude/task-board.md").write_text("# board\n")
+        (project / ".claude/logs/tester.md").write_text("- [T7] PASS\n")
+        with mock.patch.object(source, "TOOLS_DIR", spaced):
+            claude_cmd = json.loads(source.hook_settings_text())["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+            codex_cmd = translate.hooks_codex()["PreToolUse"][0]["hooks"][0]["command"]
+
+        def run(command, payload):
+            return subprocess.run(command, shell=True, cwd=project, capture_output=True,
+                                  text=True, input=json.dumps(payload))
+
+        def patch(line):
+            return {"cwd": str(project), "tool_name": "apply_patch", "tool_input": {"command":
+                    f"*** Begin Patch\n*** Update File: .claude/task-board.md\n@@\n+{line}\n*** End Patch\n"}}
+
+        bad = run(codex_cmd, patch(DONE_NO_EVIDENCE))
+        self.assertEqual(bad.returncode, 2, bad.stderr)
+        self.assertIn("board-lint: BLOCKED", bad.stderr)
+        good = run(codex_cmd, patch("- [ ] T1 [architect] x  prio:P1  status:wip"))
+        self.assertEqual(good.returncode, 0, good.stderr)
+        claude = run(claude_cmd, {"tool_name": "Edit", "tool_input": {
+            "file_path": str(project / ".claude/task-board.md"), "new_string": "x"}})
+        self.assertEqual(claude.returncode, 0, claude.stderr)
+
+    def test_skipped_user_skill_dir_is_not_git_ignored(self):
+        own = self.target / ".claude/skills/tdd"
+        own.mkdir(parents=True)
+        (own / "SKILL.md").write_text("my tdd")
+        self.install("claude")
+        ignored = self.read(".claude/skills/.gitignore")
+        self.assertNotIn("/tdd\n", ignored)
+        self.assertIn("/prd\n", ignored)
+
+    def test_users_codex_mcp_server_is_not_redeclared(self):
+        (self.target / ".codex").mkdir()
+        (self.target / ".codex/config.toml").write_text(
+            '[mcp_servers.deepwiki]\nurl = "https://my.example/mcp"\n')
+        self.install("codex")
+        config = tomllib.loads(self.read(".codex/config.toml"))  # must still parse
+        self.assertEqual(config["mcp_servers"]["deepwiki"]["url"], "https://my.example/mcp")
+        self.assertIn("graphify", config["mcp_servers"])
+        self.assertIn("keep mcp_servers.deepwiki (yours)", self.out)
+
+    def test_interrupted_run_still_cleans_up_deselected_platforms_next_time(self):
+        self.install("claude,codex")
+        with mock.patch.object(REGISTRY["claude"], "install", side_effect=KeyboardInterrupt), \
+             mock.patch.object(cli, "_interactive", return_value=False), \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(cli.main([str(self.target), "--platforms", "claude"]), 130)
+        self.install("claude")
+        self.assertFalse((self.target / ".codex").exists())
+
+    def test_non_object_value_in_users_json_is_kept_not_a_crash(self):
+        (self.target / "opencode.json").write_text('{"mcp": null, "theme": "dark"}\n')
+        self.install("opencode")
+        self.assertEqual(self.json("opencode.json"), {"mcp": None, "theme": "dark"})
+        self.assertIn("keep mcp", self.out)
+
+    def test_top_level_non_object_json_is_kept_not_a_crash(self):
+        (self.target / ".cursor").mkdir()
+        (self.target / ".cursor/mcp.json").write_text("[]\n")
+        self.install("cursor")
+        self.assertEqual(self.read(".cursor/mcp.json"), "[]\n")
+        self.assertIn("not a JSON object", self.out)

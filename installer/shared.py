@@ -41,7 +41,7 @@ def install(ctx: Context) -> None:
         dst = f".claude/{rel.as_posix()}"
         if rel.as_posix() == "settings.json":
             # Hook commands use ../tools/ (valid from claude-code/); make them absolute.
-            ctx.writer.write_text(dst, source.absolutize(src.read_text()),
+            ctx.writer.write_text(dst, source.hook_settings_text(),
                                   note="ok (hook paths made absolute)")
         else:
             ctx.writer.copy(src, dst, protected=rel.as_posix() in source.SEED_ONCE)

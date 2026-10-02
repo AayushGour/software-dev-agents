@@ -88,15 +88,24 @@ class Context:
         try:
             data = json.loads(path.read_text()) if path.exists() else {}
         except ValueError:
-            self.writer.report(rel, "keep (not valid JSON — add the harness entries by hand)")
+            data = None
+        if not isinstance(data, dict):
+            self.writer.report(rel, "keep (not a JSON object — add the harness entries by hand)")
             return
         self.touch(platform, rel)
         ours = {tuple(k): d for k, d in (prior or {}).get("keys", [])}
         recorded, changed = [], False
         for key_path, value in entries.items():
             parent = data
-            for k in key_path[:-1]:
-                parent = parent.setdefault(k, {})
+            for depth, k in enumerate(key_path[:-1]):
+                if not isinstance(parent.setdefault(k, {}), dict):
+                    self.writer.report(rel, f"keep {'.'.join(key_path[:depth + 1])} "
+                                            "(yours — not an object; add the harness entries by hand)")
+                    parent = None
+                    break
+                parent = parent[k]
+            if parent is None:
+                continue
             leaf = key_path[-1]
             current = parent.get(leaf)
             if current != value:

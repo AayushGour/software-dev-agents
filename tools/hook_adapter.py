@@ -135,7 +135,11 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(__doc__.split("\n\n")[0] + "\n")
         return 0  # a misconfigured hook must never break the session
     platform, event = argv[1], argv[2]
-    command = " ".join(argv[argv.index("--") + 1:])
+    # The platform's shell already split the hook command into argv; run it as-is.
+    # Re-joining with spaces would split any path containing one.
+    command = argv[argv.index("--") + 1:]
+    if not command:
+        return 0  # a misconfigured hook must never break the session
     try:
         payload = json.loads(sys.stdin.read() or "null")
     except ValueError:
@@ -150,7 +154,7 @@ def main(argv: list[str]) -> int:
         events = [{"hook_event_name": event, "cwd": str(root)}]
 
     for e in events:
-        r = subprocess.run(command, shell=True, input=json.dumps(e), text=True,
+        r = subprocess.run(command, input=json.dumps(e), text=True,
                            capture_output=True, cwd=root, env={**os.environ,
                                                               "CLAUDE_PROJECT_DIR": str(root)})
         if platform not in STDOUT_IS_PROTOCOL:

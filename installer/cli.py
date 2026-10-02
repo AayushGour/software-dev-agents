@@ -139,7 +139,9 @@ def _run(argv) -> int:
         for key in dropped:
             manifest.remove_platform(key, writer.report)
     except KeyboardInterrupt:
-        manifest.save(platforms)
+        # keep deselected platforms listed until their cleanup has run, so the next
+        # run still knows to remove their files
+        manifest.save(list(dict.fromkeys(platforms + dropped)))
         print("\nInterrupted mid-install — re-run to finish (existing files are skipped).")
         return 130
     manifest.save(platforms)

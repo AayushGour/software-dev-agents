@@ -4,7 +4,9 @@ MCP servers derived from .mcp.json, and hooks routed through tools/hook_adapter.
 Everything here is recorded in the manifest, so deselecting a platform removes it and a
 re-run refreshes it (including stubs for specialists the architect added since).
 """
-from installer import translate
+import tomllib
+
+from installer import blocks, translate
 from installer.context import Context
 from installer.platforms.base import Platform
 
@@ -26,7 +28,18 @@ class Codex(Platform):
 
     def install(self, ctx: Context) -> None:
         print("codex:")
-        ctx.block(".codex/config.toml", translate.mcp_codex_toml(), self.key)
+        rel = ".codex/config.toml"
+        path = ctx.target / rel
+        theirs = blocks.strip(path.read_text(), "hash") if path.exists() else ""
+        try:
+            declared = set(tomllib.loads(theirs).get("mcp_servers", {}))
+        except tomllib.TOMLDecodeError:
+            ctx.writer.report(rel, "keep (not valid TOML — add the MCP servers by hand)")
+            declared = None
+        if declared is not None:
+            for name in sorted(declared & set(translate.mcp_standard())):
+                ctx.writer.report(rel, f"keep mcp_servers.{name} (yours)")
+            ctx.block(rel, translate.mcp_codex_toml(declared), self.key)
         _stubs(ctx, self.key, ".codex/agents", ".toml", translate.codex_agent)
         ctx.merge_json(".codex/hooks.json",
                        {("hooks", ev): groups for ev, groups in translate.hooks_codex().items()},

@@ -27,9 +27,9 @@ class ClaudeCode(Platform):
     def install(self, ctx: Context) -> None:
         print("claude:")
         self._claude_md(ctx)
-        names = source.skill_names()
-        for name in names:
-            self._link_skill(ctx, name)
+        # only what was actually linked: a skipped name is a real dir the user owns,
+        # and ignoring it would silently drop their skill from git
+        names = [n for n in source.skill_names() if self._link_skill(ctx, n)]
         rel = SKILLS_GITIGNORE
         path = ctx.target / rel
         ours = ctx.manifest.get(rel)
@@ -54,7 +54,8 @@ class ClaudeCode(Platform):
             ctx.writer.report("CLAUDE.md", "removed (old rulebook — now AGENTS.md)")
         ctx.block(".claude/CLAUDE.md", source.CLAUDE_STUB.read_text(), platform=self.key)
 
-    def _link_skill(self, ctx: Context, name: str) -> None:
+    def _link_skill(self, ctx: Context, name: str) -> bool:
+        """Link .claude/skills/<name> → .agents/skills/<name>. True if it is a link now."""
         rel = f".claude/skills/{name}"
         dst = ctx.target / rel
         src = ctx.target / ".agents" / "skills" / name
@@ -65,12 +66,12 @@ class ClaudeCode(Platform):
             ctx.writer.report(rel, "ok (linked)")
             ctx.manifest.add(rel, self.key, "link", mode="symlink")
             ctx.touch(self.key, rel)
-            return
+            return True
         if dst.exists() or links.is_link(dst):
             stale_copy = ours and ours.get("mode") == "copy"
             if not (ctx.force and (stale_copy or links.is_link(dst))):
                 ctx.writer.report(rel, "skip (exists — not a link to .agents/skills)")
-                return
+                return False
             links.remove(dst)
         mode = links.make_link(src, dst)
         info = {"mode": mode}
@@ -79,4 +80,5 @@ class ClaudeCode(Platform):
         ctx.manifest.add(rel, self.key, "link", **info)
         ctx.touch(self.key, rel)
         ctx.writer.report(rel, f"ok ({mode} → .agents/skills/{name})")
+        return True
 

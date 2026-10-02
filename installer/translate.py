@@ -13,7 +13,6 @@ from installer import source
 from agent_lint import parse_frontmatter, tools_of  # on sys.path via installer.source
 
 WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "Bash", "NotebookEdit"}
-ADAPTER = f"python3 {(source.TOOLS_DIR / 'hook_adapter.py').as_posix()}"
 
 
 @dataclass(frozen=True)
@@ -83,9 +82,13 @@ def mcp_opencode() -> dict:
     return out
 
 
-def mcp_codex_toml() -> str:
+def mcp_codex_toml(skip: set = frozenset()) -> str:
+    """`skip`: servers the user's config.toml already declares — repeating a TOML table
+    makes the whole file fail to parse."""
     lines = []
     for name, srv in mcp_standard().items():
+        if name in skip:
+            continue
         lines.append(f"[mcp_servers.{name}]")
         if "url" in srv:
             lines.append(f"url = {q(srv['url'])}")
@@ -117,7 +120,7 @@ class Hook:
 
 
 def canonical_hooks() -> list[Hook]:
-    settings = json.loads(source.absolutize((source.DOTCLAUDE / "settings.json").read_text()))
+    settings = json.loads(source.hook_settings_text())
     hooks = []
     for event, groups in settings.get("hooks", {}).items():
         for group in groups:
@@ -129,7 +132,8 @@ def canonical_hooks() -> list[Hook]:
 
 
 def wrapped(platform: str, hook: Hook) -> str:
-    return f"{ADAPTER} {platform} {hook.event} -- {hook.command}"
+    adapter = source.shell_quote((source.TOOLS_DIR / "hook_adapter.py").as_posix())
+    return f"python3 {adapter} {platform} {hook.event} -- {hook.command}"
 
 
 def _matcher(tools: tuple, names: dict) -> str:
