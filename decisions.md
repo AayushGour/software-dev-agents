@@ -179,3 +179,14 @@ full file), so the ~23.3k-char rulebook's middle is reached there by a file read
 no `skills trust`, so skills are read by path. Not verified live: Cursor and Amp (not logged in),
 Antigravity and Kiro (not installed) — format facts are sourced in the scope doc. Unknown: whether
 Cursor lists agents twice when `.codex/agents` stubs sit beside `.claude/agents`.
+
+## 2026-10 — code-review-graph purged; Playwright MCP added
+**What:** (1) The last code-review-graph traces are gone from the harness: its design spec is
+deleted and the graphify README no longer points at it (older entries above stay as history).
+Outside the repo, the global `code-review-graph` install and its config in previously deployed
+projects were removed too. (2) `.mcp.json` gains `playwright` —
+`npx -y @playwright/mcp@latest --headless --isolated` — granted to tester (blackbox/FE evidence)
+and ux-designer (built UI vs spec).
+**Why:** a half-removed code-review-graph kept surfacing as an available MCP server. Playwright: tester's FE
+checks only had the scripted `webapp-testing` skill; exploratory browser runs need a live
+driver. Headless + isolated so runs never touch a real browser profile.

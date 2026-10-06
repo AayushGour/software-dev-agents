@@ -53,7 +53,7 @@ What lands in the project:
 | `.claude/skills/<n>` | links to `.agents/skills/<n>` (symlink → Windows junction → copy), git-ignored | Claude Code (only if selected) |
 | `.claude/agents/*.md` | the 10 agent prompts (+ `agent-template.md` for project specialists) | Claude Code, Cursor, Copilot |
 | `.claude/settings.json` | hooks: **board-lint** (`tools/board_lint.py`, PreToolUse on Edit/Write/MultiEdit **and Bash** — blocks `status:done` without a resolving `evidence:` ref, and Bash writes to the board) + a debounced **code-brain refresh** (`tools/graphify/refresh_graph.py`) + session start/stop | Claude Code, Cursor, Copilot |
-| `.mcp.json` | MCP servers (web-search, graphify, deepwiki), tool paths made absolute | Claude Code, Copilot |
+| `.mcp.json` | MCP servers (web-search, graphify, deepwiki, playwright), tool paths made absolute | Claude Code, Copilot |
 | `.claude/coding-standards.md` · `project-context.md` · `task-board.md` · `design.md` | working docs (start as templates) | every agent, by path |
 | `.claude/README.md` | this README (never overwrites your own root `README.md`) | you |
 
@@ -145,7 +145,7 @@ Priority = business urgency (PM owns). Severity = technical impact/complexity (s
 - Prod-grade baseline is non-negotiable: DRY, no magic strings (constants module), env config read from one place, lint clean before handoff. See `coding-standards.md`'s Non-negotiables.
 
 ## Custom tools
-`tools/` holds capabilities beyond files+shell (web search, APIs, MCP). One core impl per tool, wired to Claude Code (MCP in `claude-code/.mcp.json`) and local (`tools/registry.py`). Included: `web_search/` → SearXNG (local, `SEARXNG_URL`), `deepwiki/` → public-repo docs+Q&A (remote MCP). Needs `pip install mcp`. See `tools/README.md`.
+`tools/` holds capabilities beyond files+shell (web search, APIs, MCP). One core impl per tool, wired to Claude Code (MCP in `claude-code/.mcp.json`) and local (`tools/registry.py`). Included: `web_search/` → SearXNG (local, `SEARXNG_URL`), `deepwiki/` → public-repo docs+Q&A (remote MCP), `playwright` → browser automation (`npx @playwright/mcp`, needs Node). Needs `pip install mcp`. See `tools/README.md`.
 
 ## Quick start
 - Install the team into a project: `python3 setup-team.py <path>` (see [Setup](#setup))
@@ -153,4 +153,4 @@ Priority = business urgency (PM owns). Severity = technical impact/complexity (s
 - Add a tool: see `tools/README.md`
 
 ## Superseded
-`CLAUDE_MASTER_PROMPT.md` is the original generator spec (kept for reference). The earlier generated output lives in `old/` — superseded by `claude-code/` and `local/`. It relied on nonexistent tools (GBrain, Code Review Graph, `claude memory add`), had two drifted rosters, and ~170-line boilerplate prompts. Safe to delete once you've confirmed the new folders.
+`CLAUDE_MASTER_PROMPT.md` is the original generator spec (kept for reference). The earlier generated output lives in `old/` — superseded by `claude-code/` and `local/`. It relied on nonexistent tools (GBrain, `claude memory add`), had two drifted rosters, and ~170-line boilerplate prompts. Safe to delete once you've confirmed the new folders.
