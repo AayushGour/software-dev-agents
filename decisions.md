@@ -98,3 +98,30 @@ inherits every subagent tool, which would silently stop the leaf being a leaf; a
 main thread. Rejected: a fixed typed roster (too rigid for arbitrary domains), and having
 `deep-researcher` hand a spawn plan back to the main thread (kills the context isolation
 that makes fan-out worth doing).
+
+## 2026-10 — Code brain: code-review-graph replaced by graphify
+**What:** `tools/code_review_graph/` → `tools/graphify/`. `.mcp.json` server `graphify` runs
+`uvx --from 'graphifyy[mcp]<0.10' graphify-mcp` (pinned below 0.10:
+pre-1.0 package, and agent allowlists hardcode its tool names); the SessionStart/PostToolUse hooks now run a
+detached `graphify update .` (local tree-sitter AST, no LLM, no API key) into the gitignored
+`graphify-out/`. Agent allowlists move to `mcp__graphify__*` (`query_graph`, `get_node`,
+`get_neighbors`, `shortest_path`, `god_nodes`, `graph_stats`, `get_community`); blast radius,
+which graphify has no MCP tool for, is `graphify affected "<symbol>"` via Bash for
+senior-dev and reviewer.
+**Why:** code-review-graph wasn't working in practice. graphify's code path is lighter (no
+torch/embeddings download), and its MCP server starts before the graph exists and hot-reloads
+`graph.json`, so a background rebuild needs no restart. Lost: embedding-based semantic search
+(`query_graph` is keyword/BFS), the risk-scored `detect_changes` (reviewer uses `git diff` +
+`affected` instead), and the MCP-side "build now" tool (agents with Bash run `graphify update .`).
+
+## 2026-10 — code-review-graph purged; Playwright MCP added
+**What:** (1) code-review-graph removed everywhere, not just swapped out: its design spec deleted,
+the global `code-review-graph` pip install uninstalled, and every project the harness had
+deployed it to stripped of the `.mcp.json` server, hooks, permissions, agent tool grants and
+prompt text, plus their `.code-review-graph/` data dirs. Those projects are left with no code
+brain until re-deployed with `setup-team.py --force` (which brings graphify). (2) `.mcp.json`
+gains `playwright` — `npx -y @playwright/mcp@latest --headless --isolated` — granted to tester
+(blackbox/FE evidence) and ux-designer (built UI vs spec).
+**Why:** a half-removed CRG kept surfacing as an available MCP server and stale `mcp__code-review-graph__*`
+grants. Playwright: tester's FE checks only had the scripted `webapp-testing` skill; exploratory
+browser runs needed a live driver. Headless + isolated so runs don't touch a real browser profile.

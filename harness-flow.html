@@ -190,7 +190,7 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="mono" x="392" y="642">SessionEnd → ensure_searxng --stop</text></g>
 <g class="infra"><rect class="n" x="690" y="510" width="362" height="152" rx="8"/>
   <text class="t" x="708" y="534">MCP tools (.mcp.json, project root)</text>
-  <text class="mono" x="708" y="558">code-review-graph → uvx · SQLite code graph</text>
+  <text class="mono" x="708" y="558">graphify → uvx · local code graph</text>
   <text class="mono" x="708" y="578">web-search → uv · local SearXNG :8081</text>
   <text class="mono" x="708" y="598">deepwiki → https remote · repo docs + Q&amp;A</text>
   <text class="s" x="708" y="622">per-agent allowlists live in each agent frontmatter</text>
@@ -261,13 +261,13 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="t" x="58" y="102">SessionStart hook</text>
   <text class="mono" x="58" y="122">ensure_graph.py --build</text>
   <text class="s" x="58" y="140">checks uv/uvx present</text>
-  <text class="s" x="58" y="156">gitignores .code-review-graph/</text>
+  <text class="s" x="58" y="156">gitignores graphify-out/</text>
   <text class="s" x="58" y="172">tree-sitter → graph.db (background)</text></g>
 
 <g class="infra"><rect class="n" x="292" y="80" width="228" height="112" rx="9"/>
   <text class="t" x="310" y="102">MCP servers spawn</text>
   <text class="mono" x="310" y="122">from &lt;project&gt;/.mcp.json</text>
-  <text class="s" x="310" y="140">code-review-graph · uvx, local SQLite</text>
+  <text class="s" x="310" y="140">graphify · uvx, local graph.json</text>
   <text class="s" x="310" y="156">web-search · uv → SearXNG :8081</text>
   <text class="s" x="310" y="172">deepwiki · remote http</text></g>
 
@@ -291,7 +291,7 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="t" x="58" y="250">During the session</text>
   <text class="s" x="58" y="272">• new/edited files under .claude/agents/ hot-load in seconds — no restart</text>
   <text class="s" x="58" y="292">• that is what lets the architect add a specialist mid-project</text>
-  <text class="s" x="58" y="312">• graph goes stale after big edits → call build_or_update_graph_tool</text>
+  <text class="s" x="58" y="312">• graph looks stale → Bash: graphify update .</text>
   <text class="s" x="58" y="332">• web_search self-heals: auto-starts SearXNG if the container is down</text></g>
 
 <g class="infra"><rect class="n" x="544" y="228" width="496" height="120" rx="9"/>
@@ -485,8 +485,8 @@ ul.tight b{color:var(--text);font-weight:600}
 <g class="build"><rect class="n" x="34" y="204" width="196" height="108" rx="9"/>
   <text class="t" x="52" y="226">1 · orient</text>
   <text class="s" x="52" y="246">code brain first:</text>
-  <text class="mono" x="52" y="264">get_impact_radius_tool</text>
-  <text class="mono" x="52" y="280">query_graph_tool (callers)</text>
+  <text class="mono" x="52" y="264">graphify affected</text>
+  <text class="mono" x="52" y="280">get_neighbors (callers)</text>
   <text class="s" x="52" y="298">then Grep/Glob the files it names</text></g>
 <path class="e" d="M230,258 L266,258"/>
 <g class="build"><rect class="n" x="268" y="204" width="196" height="108" rx="9"/>
@@ -724,25 +724,25 @@ ul.tight b{color:var(--text);font-weight:600}
 
 <section id="brain">
 <h2><span class="num">13</span> The code brain — structural memory instead of re-reading the repo</h2>
-<p class="note">A per-project knowledge graph (tree-sitter → SQLite, local, no API keys) exposed as <code>mcp__code-review-graph__*</code>. It auto-builds at SessionStart and is gitignored. The rule is <b>query before you grep</b>: ask the graph what matters, then Read only those files.</p>
+<p class="note">A per-project knowledge graph (tree-sitter → graph.json, local, no API keys) exposed as <code>mcp__graphify__*</code>. It auto-builds at SessionStart and is gitignored. The rule is <b>query before you grep</b>: ask the graph what matters, then Read only those files.</p>
 <div class="fig"><svg class="d" viewBox="0 0 1080 400" role="img" aria-label="Code brain query loop">
 <g class="infra"><rect class="n" x="24" y="120" width="212" height="140" rx="9"/>
-  <text class="t" x="42" y="146">.code-review-graph/graph.db</text>
+  <text class="t" x="42" y="146">graphify-out/graph.json</text>
   <text class="s" x="42" y="168">tree-sitter parse of the repo:</text>
   <text class="s" x="42" y="188">functions · classes · calls</text>
-  <text class="s" x="42" y="206">imports · tests</text>
+  <text class="s" x="42" y="206">imports · communities</text>
   <text class="s" x="42" y="230">built by the SessionStart hook</text>
   <text class="s" x="42" y="248">gitignored — code stays local</text></g>
 <path class="e" d="M236,190 L282,190"/>
 
 <g><rect class="n" x="284" y="40" width="330" height="300" rx="9"/>
   <text class="hdr" x="302" y="64">QUERY SURFACE (per-agent allowlist)</text>
-  <text class="mono" x="302" y="94">get_architecture_overview_tool</text><text class="s" x="302" y="110">architect — the shape of what exists, before designing</text>
-  <text class="mono" x="302" y="138">semantic_search_nodes_tool</text><text class="s" x="302" y="154">find by meaning when you don't know the name</text>
-  <text class="mono" x="302" y="182">get_impact_radius_tool</text><text class="s" x="302" y="198">blast radius before touching shared code</text>
-  <text class="mono" x="302" y="226">query_graph_tool</text><text class="s" x="302" y="242">callers/callees before changing a contract; tests per node</text>
-  <text class="mono" x="302" y="270">get_review_context_tool · detect_changes_tool</text><text class="s" x="302" y="286">reviewer — risk-scored diff context and seams</text>
-  <text class="mono" x="302" y="314">build_or_update_graph_tool</text><text class="s" x="302" y="330">the lazy net — call it after big edits; don't assume freshness</text></g>
+  <text class="mono" x="302" y="94">god_nodes · get_community</text><text class="s" x="302" y="110">architect — the shape of what exists, before designing</text>
+  <text class="mono" x="302" y="138">query_graph</text><text class="s" x="302" y="154">keyword/question search when you don't know the name</text>
+  <text class="mono" x="302" y="182">graphify affected (Bash)</text><text class="s" x="302" y="198">blast radius before touching shared code</text>
+  <text class="mono" x="302" y="226">get_neighbors · get_node</text><text class="s" x="302" y="242">callers/callees before changing a contract</text>
+  <text class="mono" x="302" y="270">git diff + affected · get_neighbors</text><text class="s" x="302" y="286">reviewer — blast radius of the diff, and seams</text>
+  <text class="mono" x="302" y="314">graphify update . (Bash)</text><text class="s" x="302" y="330">the lazy net — hooks refresh it; run if a query looks stale</text></g>
 
 <path class="e" d="M614,190 L660,190"/>
 <g class="build"><rect class="n" x="662" y="120" width="180" height="140" rx="9"/>
@@ -761,7 +761,7 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="s" x="906" y="236">~82× fewer tokens (rulebook)</text></g>
 
 <path class="e thin" d="M950,262 C950,392 340,404 134,266"/>
-<text class="elabel" x="470" y="374">edits change the code → the graph goes stale → build_or_update_graph_tool</text>
+<text class="elabel" x="470" y="374">edits change the code → the hook re-runs graphify update</text>
 </svg></div>
 <div class="cap">fig 11 — query the graph, read the few files it names, edit, refresh the graph.</div>
 </section>
@@ -800,8 +800,8 @@ ul.tight b{color:var(--text);font-weight:600}
   <text class="mono" x="386" y="76">uv run … tools/web_search/mcp_server.py</text>
   <text class="s" x="386" y="96">self-healing: auto-starts SearXNG; SessionEnd stops it</text></g>
 <g class="infra"><rect class="n" x="368" y="122" width="330" height="80" rx="9"/>
-  <text class="t" x="386" y="146">code-review-graph</text>
-  <text class="mono" x="386" y="168">uvx --from code-review-graph[embeddings] … serve</text>
+  <text class="t" x="386" y="146">graphify</text>
+  <text class="mono" x="386" y="168">uvx --from graphifyy[mcp]&lt;0.10 graphify-mcp</text>
   <text class="s" x="386" y="188">local SQLite graph · needs uv · no API keys</text></g>
 <g class="infra"><rect class="n" x="368" y="214" width="330" height="80" rx="9"/>
   <text class="t" x="386" y="238">deepwiki  (remote http)</text>

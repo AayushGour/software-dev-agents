@@ -68,7 +68,7 @@ The integrity rules below (single-writer board, evidence-gated done, security tr
 .claude/design.md             flows, states, components, accessibility AC                 (ux-designer; optional — only UI projects)
 .claude/logs/<agent>.md       one log file per agent, that agent appends only             (each agent, own file only)
 ```
-"Analyze the code" = query the **code brain** (`mcp__code-review-graph__*`) first for structure/impact/callers, then Grep / Glob / Read the specific files it points to. Reuse before you write — no duplicates.
+"Analyze the code" = query the **code brain** (`mcp__graphify__*`) first for structure/impact/callers, then Grep / Glob / Read the specific files it points to. Reuse before you write — no duplicates.
 
 **On-demand expertise (skills — progressive disclosure, ~zero context cost until triggered):** `security-review` (reviewer/devops; hard-trigger on auth/secrets/PII/user input/external I/O) · `differential-review` (reviewer; the hard-trigger's deep pass — git-history regressions, blast radius, attacker modeling) · `data-modeling` (architect/senior-dev; any schema/migration change) · `tdd` + `diagnosing-bugs` (devs; test-first build, hard-bug loop) · `webapp-testing` + `property-based-testing` (tester; browser evidence, domain-wide properties) · `prd` (business-analyst; M/L asks) · `ui-ux-pro-max` (ux-designer). When a trigger fires, Read that skill's `SKILL.md` directly from `.claude/skills/<name>/`. Each vendored skill's `SOURCE.md` records origin + license.
 
@@ -78,12 +78,14 @@ The integrity rules below (single-writer board, evidence-gated done, security tr
 
 **User-facing docs** are split three ways by who knows it best: **architect** → overview + getting-started/setup; **senior-dev** → API/usage reference for what they built; **tester** → verified how-to/user guide (only steps they ran and saw pass). One voice, no overlap — keep the three coherent.
 
-## The code brain (code-review-graph)
-A persistent, per-project **knowledge graph of the codebase** — the team's structural memory. Tree-sitter parses the code into a graph (functions, classes, calls, imports, tests) queried via the **`mcp__code-review-graph__*`** MCP tools. It auto-builds/updates in the background at session start (SessionStart hook) and is gitignored (`.code-review-graph/`).
-- **Query it before you Grep/Read.** For any code-analysis step, hit the brain first — impact/blast-radius before editing shared code, callers/callees before changing a contract, review-context before reviewing, architecture-overview when planning — then read only the files it points to. This is how the team avoids re-reading the whole codebase.
-- **Find by meaning** when you don't know the name: `semantic_search_nodes_tool`.
-- **Freshness is automatic** — a debounced PostToolUse hook refreshes the graph after source edits. `build_or_update_graph_tool` remains the manual override if a query looks stale.
-- Needs `uv` (provides `uvx`); the graph is local (SQLite), no API keys, code stays on the machine.
+**Browser (Playwright MCP):** `mcp__playwright__browser_*` drives a real headless Chromium against a running app — navigate, accessibility snapshot, click/type/fill, screenshot, console + network logs. Granted to **tester** (blackbox/FE evidence) and **ux-designer** (check built UI against the spec). Runs via `npx @playwright/mcp` — needs Node; first run downloads the package (and `npx playwright install chromium` if the browser is missing).
+
+## The code brain (graphify)
+A persistent, per-project **knowledge graph of the codebase** — the team's structural memory. [graphify](https://github.com/Graphify-Labs/graphify) parses the code with tree-sitter into a graph (functions, classes, calls, imports) queried via the **`mcp__graphify__*`** MCP tools. It auto-builds/updates in the background at session start (SessionStart hook) and is gitignored (`graphify-out/`).
+- **Query it before you Grep/Read.** For any code-analysis step, hit the brain first — blast radius before editing shared code, callers/callees before changing a contract, core abstractions when planning — then read only the files it points to. This is how the team avoids re-reading the whole codebase.
+- **Tools:** `query_graph` (keyword/question search — use when you don't know the name) · `get_node` / `get_neighbors` (a symbol and its callers/callees) · `shortest_path` (how A reaches B) · `god_nodes` / `graph_stats` / `get_community` (architecture overview). **Blast radius** has no MCP tool — agents with Bash run `uvx --from 'graphifyy[mcp]<0.10' graphify affected "<symbol>"`.
+- **Freshness is automatic** — a debounced PostToolUse hook re-runs `graphify update .` after source edits, and the MCP server reloads `graph.json` when it changes. If a query looks stale or reports `graph.json not found`, anyone with Bash can run `uvx --from 'graphifyy[mcp]<0.10' graphify update .`; otherwise fall back to Grep/Read.
+- Needs `uv` (provides `uvx`); code extraction is local AST only — no LLM, no API keys, code stays on the machine.
 
 ## Logging — one file per agent (no shared file, no lock)
 Each agent writes **only** its own `.claude/logs/<agent>.md` — e.g. senior-dev → `.claude/logs/senior-dev.md`. The `logs/` dir isn't shipped; create your file on first write (a Write makes parent dirs). Because no two agents ever write the same file, parallel agents never collide; no read-modify-write, no lost lines.

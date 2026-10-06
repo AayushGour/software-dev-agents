@@ -28,7 +28,7 @@ python3 setup-team.py <path-to-your-project>
 - `.claude/coding-standards.md` · `.claude/project-context.md` · `.claude/task-board.md` · `.claude/design.md` — working docs (start as templates)
 - `.claude/skills/ui-ux-pro-max/` — UI/UX design-intelligence skill the `ux-designer` queries (searchable local DB of styles/palettes/fonts/UX rules; pure stdlib, no pip install). Vendored from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT).
 - `.claude/skills/` — on-demand expertise (progressive disclosure, ~100 tokens each until triggered): `security-review` + `differential-review` (Trail of Bits, CC-BY-SA) for reviews, `data-modeling` for schema changes, `tdd` + `diagnosing-bugs` (Matt Pocock, MIT) for devs, `webapp-testing` (Anthropic, Apache-2.0) + `property-based-testing` (Trail of Bits) for tester, `prd` (GitHub, MIT) for the BA. Each vendored skill carries a `SOURCE.md` (origin, commit, license) and was security-audited before vendoring
-- a **board-lint hook** (`tools/board_lint.py`, PreToolUse on Edit/Write/MultiEdit **and Bash**) — blocks `status:done` lines whose `evidence:` ref is missing or doesn't resolve (file must exist; `#T<id>` anchors must appear in it), and blocks Bash writes to the board outright so every change flows through the linted Edit/Write path. A **debounced PostToolUse hook** (`tools/code_review_graph/refresh_graph.py`) keeps the code-brain graph fresh after source edits — no one has to remember to rebuild it
+- a **board-lint hook** (`tools/board_lint.py`, PreToolUse on Edit/Write/MultiEdit **and Bash**) — blocks `status:done` lines whose `evidence:` ref is missing or doesn't resolve (file must exist; `#T<id>` anchors must appear in it), and blocks Bash writes to the board outright so every change flows through the linted Edit/Write path. A **debounced PostToolUse hook** (`tools/graphify/refresh_graph.py`) keeps the code-brain graph fresh after source edits — no one has to remember to rebuild it
 - this `README.md` → `.claude/README.md` (kept inside `.claude/`, never overwrites your project's own root `README.md`)
 - `.mcp.json` at the project root — the **only** file placed there, because Claude Code discovers project MCP servers only from `<project>/.mcp.json`, not from `.claude/` (tool paths rewritten to absolute)
 
@@ -120,7 +120,7 @@ Priority = business urgency (PM owns). Severity = technical impact/complexity (s
 - Prod-grade baseline is non-negotiable: DRY, no magic strings (constants module), env config read from one place, lint clean before handoff. See `coding-standards.md`'s Non-negotiables.
 
 ## Custom tools
-`tools/` holds capabilities beyond files+shell (web search, APIs, MCP). One core impl per tool, wired to Claude Code (MCP in `claude-code/.mcp.json`) and local (`tools/registry.py`). Included: `web_search/` → SearXNG (local, `SEARXNG_URL`), `deepwiki/` → public-repo docs+Q&A (remote MCP). Needs `pip install mcp`. See `tools/README.md`.
+`tools/` holds capabilities beyond files+shell (web search, APIs, MCP). One core impl per tool, wired to Claude Code (MCP in `claude-code/.mcp.json`) and local (`tools/registry.py`). Included: `web_search/` → SearXNG (local, `SEARXNG_URL`), `deepwiki/` → public-repo docs+Q&A (remote MCP), `playwright` → browser automation (`npx @playwright/mcp`, needs Node). Needs `pip install mcp`. See `tools/README.md`.
 
 ## Quick start
 - Install the team into a project: `python3 setup-team.py <path>` (see [Setup](#setup))
@@ -128,4 +128,4 @@ Priority = business urgency (PM owns). Severity = technical impact/complexity (s
 - Add a tool: see `tools/README.md`
 
 ## Superseded
-`CLAUDE_MASTER_PROMPT.md` is the original generator spec (kept for reference). The earlier generated output lives in `old/` — superseded by `claude-code/` and `local/`. It relied on nonexistent tools (GBrain, Code Review Graph, `claude memory add`), had two drifted rosters, and ~170-line boilerplate prompts. Safe to delete once you've confirmed the new folders.
+`CLAUDE_MASTER_PROMPT.md` is the original generator spec (kept for reference). The earlier generated output lives in `old/` — superseded by `claude-code/` and `local/`. It relied on nonexistent tools (GBrain, `claude memory add`), had two drifted rosters, and ~170-line boilerplate prompts. Safe to delete once you've confirmed the new folders.

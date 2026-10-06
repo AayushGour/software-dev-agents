@@ -1,6 +1,6 @@
 """Unit tests for ensure_graph — install/build orchestration logic, all side effects mocked.
 Run from repo root:
-    PYTHONPATH=tools/code_review_graph python3 -m unittest test_ensure_graph -v
+    PYTHONPATH=tools/graphify python3 -m unittest test_ensure_graph -v
 """
 
 import os
@@ -24,26 +24,30 @@ class _InTmp(unittest.TestCase):
 
 
 class BuildOrUpdate(_InTmp):
-    def test_build_when_no_db(self):
+    def test_runs_graphify_update_on_cwd(self):
         with mock.patch.object(es.subprocess, "Popen") as P:
             es.build_or_update()
-        chain = P.call_args.args[0][2]
-        self.assertIn("'build'", chain)
-        self.assertNotIn("'update'", chain)
+        cmd = P.call_args.args[0]
+        self.assertEqual(cmd[-2:], ["update", "."])
+        self.assertIn("graphifyy[mcp]<0.10", cmd)
 
-    def test_update_when_db_exists(self):
+    def test_detached_and_logged(self):
+        with mock.patch.object(es.subprocess, "Popen") as P:
+            es.build_or_update()
+        self.assertTrue(P.call_args.kwargs["start_new_session"])
+        self.assertTrue((Path(es.GRAPH_DIR) / "ensure.log").exists())
+
+
+class Status(_InTmp):
+    def test_absent_then_up(self):
+        with mock.patch("builtins.print") as pr:
+            es.main(["x", "--status"])
+        pr.assert_called_with("absent")
         Path(es.GRAPH_DIR).mkdir()
-        Path(es.GRAPH_DB).write_text("x")
-        with mock.patch.object(es.subprocess, "Popen") as P:
-            es.build_or_update()
-        chain = P.call_args.args[0][2]
-        self.assertIn("'update'", chain)
-
-    def test_chain_includes_embed(self):
-        with mock.patch.object(es.subprocess, "Popen") as P:
-            es.build_or_update()
-        chain = P.call_args.args[0][2]
-        self.assertIn("'embed'", chain)
+        Path(es.GRAPH_JSON).write_text("{}")
+        with mock.patch("builtins.print") as pr:
+            es.main(["x", "--status"])
+        pr.assert_called_with("up")
 
 
 class Gitignore(_InTmp):
@@ -51,12 +55,12 @@ class Gitignore(_InTmp):
         es.graph_gitignored()
         es.graph_gitignored()
         content = Path(".gitignore").read_text()
-        self.assertEqual(content.count(".code-review-graph/"), 1)
+        self.assertEqual(content.count("graphify-out/"), 1)
 
     def test_respects_existing_entry(self):
-        Path(".gitignore").write_text(".code-review-graph/\n")
+        Path(".gitignore").write_text("graphify-out/\n")
         es.graph_gitignored()
-        self.assertEqual(Path(".gitignore").read_text().count(".code-review-graph/"), 1)
+        self.assertEqual(Path(".gitignore").read_text().count("graphify-out/"), 1)
 
 
 class EnsureUv(_InTmp):
