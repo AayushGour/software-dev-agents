@@ -387,11 +387,11 @@ Only store durable project knowledge.
 
 ---
 
-# Code Review Graph
+# Code Brain (graphify)
 
 Before implementation every engineering agent must analyze the codebase.
 
-Use Code Review Graph to discover
+Use the graphify code brain (`mcp__graphify__*`) to discover
 
 relevant files
 
@@ -543,7 +543,7 @@ Tools
 
 Memory Usage
 
-Code Review Graph Usage
+the graphify code brain Usage
 
 Consultation Rules
 
@@ -585,7 +585,7 @@ Read project documents
 
 ↓
 
-Analyze Code Review Graph
+Analyze the graphify code brain
 
 ↓
 

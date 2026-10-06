@@ -4,8 +4,7 @@ A persistent, per-project **knowledge graph of the codebase** — the team's str
 memory. Built by [graphify](https://github.com/Graphify-Labs/graphify) (PyPI `graphifyy`;
 tree-sitter AST → `graphify-out/graph.json`), exposed as its own MCP server so agents query
 structure instead of re-reading files. Code extraction is local only — no LLM, no API key.
-Replaced code-review-graph (see `decisions.md`); the original design is
-`docs/superpowers/specs/2026-07-28-code-review-graph-brain-design.md`.
+Rationale and history: `decisions.md`.
 
 ## How it's wired
 - **MCP server** (`claude-code/.mcp.json`): `uvx --from 'graphifyy[mcp]<0.10' graphify-mcp`. Runs

@@ -77,6 +77,8 @@ The integrity rules below (single-writer board, evidence-gated done, security tr
 
 **User-facing docs** are split three ways by who knows it best: **architect** → overview + getting-started/setup; **senior-dev** → API/usage reference for what they built; **tester** → verified how-to/user guide (only steps they ran and saw pass). One voice, no overlap — keep the three coherent.
 
+**Browser:** `mcp__playwright__browser_*` (Playwright MCP, headless Chromium; needs Node) — tester for blackbox/FE evidence, ux-designer to check built UI vs spec.
+
 ## The code brain (graphify)
 A persistent, per-project **knowledge graph of the codebase** — the team's structural memory. [graphify](https://github.com/Graphify-Labs/graphify) parses the code with tree-sitter into a graph (functions, classes, calls, imports) queried via the **`mcp__graphify__*`** MCP tools. It auto-builds/updates in the background at session start (SessionStart hook) and is gitignored (`graphify-out/`).
 - **Query it before you Grep/Read.** For any code-analysis step, hit the brain first — blast radius before editing shared code, callers/callees before changing a contract, core abstractions when planning — then read only the files it points to. This is how the team avoids re-reading the whole codebase.
